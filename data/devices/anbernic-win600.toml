@@ -11,5 +11,8 @@ driver = "amdgpu"
 [gpu_power_profile]
 driver = "amdgpu"
 
+[tdp_limit]
+method = "power_station"
+
 [inputplumber]
 target_devices = ["deck-uhid", "keyboard", "mouse"]
