@@ -1,0 +1,27 @@
+[[device]]
+dmi.sys_vendor = "ASUSTeK COMPUTER INC."
+dmi.board_name = "GZ302EA"
+device = "rog_flow_z13_2025"
+variant = "GZ302EA"
+
+[gpu_performance]
+driver = "amdgpu"
+
+[gpu_power_profile]
+driver = "amdgpu"
+
+[performance_profile]
+platform_profile_name = "asus-wmi"
+# until custom mode is added
+suggested_default = "performance"
+
+[tdp_limit]
+method = "firmware_attribute"
+
+[tdp_limit.firmware_attribute]
+attribute = "asus-armoury"
+# until custom mode is added
+performance_profile = "performance"
+
+[battery_charge_limit]
+method = "acpi_sb"
