@@ -150,14 +150,35 @@ pub(crate) async fn gpu_power_profile_driver() -> Result<Box<dyn GpuPowerProfile
     })
 }
 
+async fn detect_gpu_type() -> Result<GpuPerformanceLevelDriverType> {
+    if find_hwmon(AMDGPU_HWMON_NAME).await.is_ok() {
+        debug!("Auto-detected AMD GPU");
+        return Ok(GpuPerformanceLevelDriverType::Amdgpu);
+    }
+
+    if IntelGpuPerformanceLevelDriver::detect_gpu_info()
+        .await
+        .is_ok()
+    {
+        debug!("Auto-detected Intel GPU");
+        return Ok(GpuPerformanceLevelDriverType::Intel);
+    }
+
+    bail!("No supported GPU detected automatically")
+}
+
 pub(crate) async fn gpu_performance_level_driver() -> Result<Box<dyn GpuPerformanceLevelDriver>> {
     let config = device_config().await?;
-    let config = config
-        .as_ref()
-        .and_then(|config| config.gpu_performance.as_ref())
-        .ok_or(anyhow!("No GPU power profile driver configured"))?;
 
-    Ok(match &config.driver {
+    let driver_type =
+        if let Some(gpu_config) = config.as_ref().and_then(|c| c.gpu_performance.as_ref()) {
+            gpu_config.driver.clone()
+        } else {
+            debug!("No GPU performance config found, auto-detecting GPU type");
+            detect_gpu_type().await?
+        };
+
+    Ok(match driver_type {
         GpuPerformanceLevelDriverType::Amdgpu => Box::new(AmdgpuPerformanceLevelDriver {}),
         GpuPerformanceLevelDriverType::Intel => {
             Box::new(IntelGpuPerformanceLevelDriver::new().await?)
