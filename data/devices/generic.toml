@@ -20,4 +20,4 @@ variant = "Generic"
 method = "power_station"
 
 [inputplumber]
-target_devices = ["deck-uhid", "keyboard"]
+target_devices = ["deck-uhid", "keyboard", "mouse"]
