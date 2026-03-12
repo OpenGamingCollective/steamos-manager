@@ -66,6 +66,7 @@ const TDP_LIMIT2: &str = "power2_cap";
 
 #[cfg(not(test))]
 const SB_PATHS: &[&str] = &[
+    "/sys/class/power_supply",
     "/sys/bus/platform/drivers/acpi-battery/PNP0C0A:00/firmware_node/power_supply",
     "/sys/bus/acpi/drivers/battery/PNP0C0A:00/power_supply",
 ];
@@ -677,9 +678,6 @@ async fn find_battery_charge_path() -> Result<PathBuf> {
                     Err(e) => return Err(e.into()),
                 };
                 while let Some(entry) = dir.next_entry().await? {
-                    if !entry.file_type().await?.is_dir() {
-                        continue;
-                    }
                     let path = entry.path();
                     let path = match read_to_string(path.join("type")).await {
                         Ok(s) if s.trim() == "Battery" => path.join(SB_LIMIT_PATH),
