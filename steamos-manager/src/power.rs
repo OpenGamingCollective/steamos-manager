@@ -548,9 +548,20 @@ impl TdpLimitManager for FirmwareAttributeLimitManager {
             .and_then(|s| s.trim().parse::<u32>().ok())
             .unwrap_or(0);
 
+        let sppt_max = fs::read_to_string(base.join(Self::SPPT_SUFFIX).join("max_value"))
+            .await
+            .ok()
+            .and_then(|s| s.trim().parse::<u32>().ok())
+            .unwrap_or(u32::MAX);
+        let fppt_max = fs::read_to_string(base.join(Self::FPPT_SUFFIX).join("max_value"))
+            .await
+            .ok()
+            .and_then(|s| s.trim().parse::<u32>().ok())
+            .unwrap_or(u32::MAX);
+
         let spl_value = limit;
-        let sppt_value = limit.max(sppt_min);
-        let fppt_value = limit.max(fppt_min);
+        let sppt_value = (limit + 1).clamp(sppt_min, sppt_max);
+        let fppt_value = (limit + 2).clamp(fppt_min, fppt_max);
 
         write_synced(
             base.join(Self::SPL_SUFFIX).join("current_value"),
