@@ -1,4 +1,16 @@
 [[device]]
+dmi.sys_vendor = "GPD"
+dmi.board_name = "*"
+device = "gpd_generic"
+variant = "GPD_Generic"
+
+[[device]]
+dmi.sys_vendor = "AYANEO"
+dmi.board_name = "*"
+device = "ayaneo_generic"
+variant = "AYANEO_Generic"
+
+[[device]]
 dmi.sys_vendor = "*"
 dmi.board_name = "*"
 device = "generic"
