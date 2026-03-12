@@ -446,6 +446,7 @@ impl SteamOSManager {
             .await
             .power_profile_from_str(value)
             .map_err(to_zbus_fdo_error)?;
+        info!("Setting GPU power profile to {profile}");
         driver
             .lock()
             .await
@@ -457,6 +458,7 @@ impl SteamOSManager {
 
     async fn set_cpu_scaling_governor(&self, governor: String) -> fdo::Result<()> {
         let g = CPUScalingGovernor::try_from(governor.as_str()).map_err(to_zbus_fdo_error)?;
+        info!("Setting CPU scaling governor to {g}");
         set_cpu_scaling_governor(g)
             .await
             .inspect_err(|message| error!("Error setting CPU scaling governor: {message}"))
@@ -503,6 +505,7 @@ impl SteamOSManager {
             Ok(state) => state,
             Err(err) => return Err(to_zbus_fdo_error(err)),
         };
+        info!("Setting CPU boost state to {state}");
         set_cpu_boost_state(state)
             .await
             .inspect_err(|message| error!("Error setting CPU boost state: {message}"))
@@ -544,6 +547,7 @@ impl SteamOSManager {
                 "GPU performance settings not configured",
             )));
         };
+        info!("Setting GPU performance level to {level}");
         let level = match driver.lock().await.performance_level_from_str(level) {
             Ok(level) => level,
             Err(e) => return Err(to_zbus_fdo_error(e)),
@@ -572,6 +576,7 @@ impl SteamOSManager {
                 "GPU performance settings not configured",
             )));
         };
+        info!("Setting manual GPU clock to {clocks}");
         driver
             .lock()
             .await
@@ -595,6 +600,7 @@ impl SteamOSManager {
                 "TDP limiting not configured",
             )));
         };
+        info!("Setting TDP limit to {limit}");
         manager
             .set_tdp_limit(limit)
             .await
@@ -785,18 +791,21 @@ impl SteamOSManager {
     }
 
     async fn set_temporary_session(&self, session: &str) -> fdo::Result<()> {
+        info!("Setting temporary session to {session}");
         set_temporary_session(session)
             .await
             .map_err(to_zbus_fdo_error)
     }
 
     async fn set_default_session(&self, session: &str) -> fdo::Result<()> {
+        info!("Setting default session to {session}");
         set_default_session(session)
             .await
             .map_err(to_zbus_fdo_error)
     }
 
     async fn clean_temporary_sessions(&self) -> fdo::Result<()> {
+        info!("Cleaning temporary sessions");
         clean_temporary_sessions().await.map_err(to_zbus_fdo_error)
     }
 
