@@ -1017,6 +1017,42 @@ pub mod test {
         assert!(!DeviceConfig::dmi_glob_match("????", "ZOTAC"));
     }
 
+    #[tokio::test]
+    async fn test_exact_match_priority_over_wildcard_across_files() {
+        let _h = setup_board(
+            "Micro-Star International Co., Ltd.\n", 
+            "MS-1T52\n", 
+            "Claw 8 AI+ A2VM\n"
+        ).await.unwrap();
+
+        // This test verifies that existing MSI Claw config takes priority over any generic config
+        let (device, variant) = device_variant().await.unwrap();
+        
+        // Should match exact config from existing msi-claw-series.toml instead of generic
+        // This proves cross-config exact matching priority works
+        assert_eq!(device, "claw8_a2vm");
+        assert_eq!(variant, "Claw 8 AI+ A2VM");
+    }
+
+    #[tokio::test]
+    async fn test_fallback_to_wildcard_when_no_exact_match() {
+        let _h = setup_board(
+            "Unknown Vendor\n",
+            "Unknown Board\n",
+            "Unknown Product\n" 
+        ).await.unwrap();
+
+        // No need to setup configs - use existing ones in data/devices/
+        // This tests true fallback behavior with real config files
+        
+        let (device, variant) = device_variant().await.unwrap();
+        
+        // Should fallback to wildcard matching when no exact match exists
+        // Should match generic.toml since no other config will match "Unknown Vendor"
+        assert_eq!(device, "generic");
+        assert_eq!(variant, "Generic");
+    }
+
     #[test]
     fn fan_control_state_roundtrip() {
         enum_roundtrip!(FanControlState {
