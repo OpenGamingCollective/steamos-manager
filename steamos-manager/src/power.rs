@@ -575,12 +575,15 @@ impl TdpLimitManager for FirmwareAttributeLimitManager {
         )
         .await
         .inspect_err(|message| error!("Error writing to sysfs file: {message}"))?;
-        write_synced(
-            base.join(Self::FPPT_SUFFIX).join("current_value"),
-            fppt_value.to_string().as_bytes(),
-        )
-        .await
-        .inspect_err(|message| error!("Error writing to sysfs file: {message}"))?;
+
+        // Only write to FPPT if the path exists
+        let fppt_path = base.join(Self::FPPT_SUFFIX).join("current_value");
+        if try_exists(&fppt_path).await.unwrap_or(false) {
+            write_synced(fppt_path, fppt_value.to_string().as_bytes())
+                .await
+                .inspect_err(|message| error!("Error writing to sysfs file: {message}"))?;
+        }
+
         Ok(())
     }
 
