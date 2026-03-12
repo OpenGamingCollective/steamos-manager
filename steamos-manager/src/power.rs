@@ -904,17 +904,17 @@ impl PowerStationTdpLimitManager {
         Ok(max_tdp.round() as u32)
     }
 
-    // async fn get_max_boost(&self) -> Result<u32> {
-    //     let max_boost = self
-    //         .get_tdp_property("MaxBoost", Self::DBUS_TDP_INTERFACE)
-    //         .await?;
-    //     Ok(max_boost.round() as u32)
-    // }
+    async fn get_max_boost(&self) -> Result<u32> {
+        let max_boost = self
+            .get_tdp_property("MaxBoost", Self::DBUS_TDP_INTERFACE)
+            .await?;
+        Ok(max_boost.round() as u32)
+    }
 
-    // async fn set_tdp_boost(&self, boost: u32) -> Result<()> {
-    //     self.set_tdp_property(Self::DBUS_TDP_INTERFACE, "Boost", boost)
-    //         .await
-    // }
+    async fn set_tdp_boost(&self, boost: u32) -> Result<()> {
+        self.set_tdp_property(Self::DBUS_TDP_INTERFACE, "Boost", boost)
+            .await
+    }
 }
 
 #[async_trait]
@@ -937,10 +937,13 @@ impl TdpLimitManager for PowerStationTdpLimitManager {
             limit,
             range
         );
+        let max_boost = self.get_max_boost().await?;
 
         // Use the common method to set the TDP property
         self.set_tdp_property(Self::DBUS_TDP_INTERFACE, "TDP", limit)
-            .await
+            .await?;
+        self.set_tdp_boost(max_boost).await?;
+        Ok(())
     }
 
     // Implementation of the required get_tdp_limit_range method
