@@ -27,6 +27,24 @@ use crate::systemd::SystemdUnit;
 #[cfg(not(test))]
 static PLATFORM_CONFIG: OnceCell<Option<PlatformConfig>> = OnceCell::const_new();
 
+#[derive(Clone, Deserialize, Debug)]
+#[serde(default)]
+pub(crate) struct SessionConfig {
+    pub gamescope_session_service: String,
+    pub gamescope_session_desktop: String,
+    pub desktop: String,
+}
+
+impl Default for SessionConfig {
+    fn default() -> Self {
+        SessionConfig {
+            gamescope_session_service: String::from("gamescope-session-plus@ogui-steam.service"),
+            gamescope_session_desktop: String::from("gamescope-session-ogui-steam.desktop"),
+            desktop: String::from("plasma.desktop"),
+        }
+    }
+}
+
 #[derive(Clone, Default, Deserialize, Debug)]
 #[serde(default)]
 pub(crate) struct PlatformConfig {
@@ -35,6 +53,7 @@ pub(crate) struct PlatformConfig {
     pub update_dock: Option<ScriptConfig>,
     pub storage: Option<StorageConfig>,
     pub fan_control: Option<ServiceConfig>,
+    pub session: Option<SessionConfig>,
 }
 
 #[derive(Clone, Default, Deserialize, Debug)]
@@ -227,6 +246,27 @@ pub(crate) async fn platform_config() -> Result<Option<PlatformConfig>> {
     Ok(config)
 }
 
+#[cfg(not(test))]
+pub(crate) async fn session_config() -> SessionConfig {
+    match platform_config().await {
+        Ok(config) => config
+            .as_ref()
+            .map(|c| c.session.clone().unwrap_or_default())
+            .unwrap_or_default(),
+        Err(_) => SessionConfig::default(),
+    }
+}
+
+#[cfg(test)]
+pub(crate) async fn session_config() -> SessionConfig {
+    platform_config()
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_default()
+        .session
+        .unwrap_or_default()
+}
 #[cfg(test)]
 mod test {
     use super::*;
