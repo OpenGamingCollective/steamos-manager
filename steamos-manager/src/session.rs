@@ -29,6 +29,7 @@ use zbus::{Connection, fdo};
 
 use crate::daemon::user::{Command as DaemonCommand, UserCommand};
 use crate::manager::root::RootManagerProxy;
+use crate::platform::session_config;
 use crate::systemd::{ActiveState, JobMode, SystemdUnit};
 use crate::{Service, path};
 
@@ -274,7 +275,8 @@ impl SessionManager {
     }
 
     pub(crate) async fn current_login_mode(&self) -> Result<LoginMode> {
-        if self.unit_is_active("gamescope-session.service").await? {
+        let config = session_config().await;
+        if self.unit_is_active(&config.gamescope_session_service).await? {
             return Ok(LoginMode::Game);
         }
         Ok(LoginMode::Desktop)
@@ -324,12 +326,11 @@ impl SessionManager {
     }
 
     pub(crate) async fn default_desktop_session(&self) -> Result<String> {
-        Ok(self
-            .get_state()
-            .await?
-            .desktop_session
-            .unwrap_or_default()
-            .0)
+        let state = self.get_state().await?;
+        match state.desktop_session {
+            Some(session) => Ok(session.0),
+            None => Ok(session_config().await.desktop),
+        }
     }
 
     pub(crate) async fn set_default_desktop_session(&self, session: &str) -> Result<()> {
@@ -360,7 +361,7 @@ impl SessionManager {
 
     pub(crate) async fn session_for_mode(&self, mode: LoginMode) -> Result<String> {
         match mode {
-            LoginMode::Game => Ok(String::from("gamescope-wayland.desktop")),
+            LoginMode::Game => Ok(session_config().await.gamescope_session_desktop),
             LoginMode::Desktop => self.default_desktop_session().await,
         }
     }
@@ -435,7 +436,8 @@ impl Service for SessionManagerService {
     const NAME: &'static str = "session-manager";
 
     async fn run(&mut self) -> Result<()> {
-        let unit = SystemdUnit::new(&self.session, "gamescope-session.service").await?;
+        let config = session_config().await;
+        let unit = SystemdUnit::new(&self.session, &config.gamescope_session_service).await?;
 
         let stream = unit
             .proxy
@@ -819,7 +821,7 @@ mod test {
         notify.notified().await;
         assert_eq!(
             root_manager.get().await.temporary_session,
-            "gamescope-wayland.desktop"
+            "gamescope-session-ogui-steam.desktop"
         );
         {
             let mut unit = unit.get_mut().await;
