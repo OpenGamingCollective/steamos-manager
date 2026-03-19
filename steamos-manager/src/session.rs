@@ -207,7 +207,7 @@ impl SessionManager {
     }
 
     pub(crate) async fn current_login_mode(&self) -> Result<LoginMode> {
-        if self.unit_is_active("gamescope-session.service").await? {
+        if self.unit_is_active("gamescope-session-plus@steam-plus.service").await? {
             return Ok(LoginMode::Game);
         }
         Ok(LoginMode::Desktop)
@@ -284,7 +284,7 @@ impl SessionManager {
 
     pub(crate) async fn session_for_mode(&self, mode: LoginMode) -> Result<String> {
         match mode {
-            LoginMode::Game => Ok(String::from("gamescope-wayland.desktop")),
+            LoginMode::Game => Ok(String::from("gamescope-session-steam-plus.desktop")),
             LoginMode::Desktop => self.default_desktop_session().await,
         }
     }
@@ -348,7 +348,7 @@ impl Service for SessionManagerService {
     const NAME: &'static str = "session-manager";
 
     async fn run(&mut self) -> Result<()> {
-        let unit = SystemdUnit::new(&self.session, "gamescope-session.service").await?;
+        let unit = SystemdUnit::new(&self.session, "gamescope-session-plus@steam-plus.service").await?;
 
         let stream = unit
             .proxy
@@ -749,7 +749,7 @@ mod test {
         notify.notified().await;
         assert_eq!(
             root_manager.get().await.temporary_session,
-            "gamescope-wayland.desktop"
+            "gamescope-session-steam-plus.desktop"
         );
         {
             let mut unit = unit.get_mut().await;
