@@ -2109,7 +2109,8 @@ mod test {
     };
     use crate::path;
     use crate::platform::{
-        FormatDeviceConfig, PlatformConfig, ResetConfig, ScriptConfig, ServiceConfig, StorageConfig,
+        FormatDeviceConfig, PlatformConfig, ResetConfig, ScriptConfig, ServiceConfig,
+        SessionConfig, StorageConfig,
     };
     use crate::power::test::Nodes as PowerNodes;
     use crate::power::{BatteryChargeLimitMethod, TdpLimitingMethod, TdpManagerService};
@@ -2212,6 +2213,7 @@ mod test {
             fan_control: Some(ServiceConfig::Systemd(String::from(
                 "jupiter-fan-control.service",
             ))),
+            session: Some(SessionConfig::default()),
         })
     }
 
