@@ -284,7 +284,7 @@ impl SessionManager {
 
     pub(crate) async fn session_for_mode(&self, mode: LoginMode) -> Result<String> {
         match mode {
-            LoginMode::Game => Ok(String::from("gamescope-session-steam-plus.desktop")),
+            LoginMode::Game => Ok(String::from("gamescope-session-ogui-steam.desktop")),
             LoginMode::Desktop => self.default_desktop_session().await,
         }
     }
@@ -749,7 +749,7 @@ mod test {
         notify.notified().await;
         assert_eq!(
             root_manager.get().await.temporary_session,
-            "gamescope-session-steam-plus.desktop"
+            "gamescope-session-ogui-steam.desktop"
         );
         {
             let mut unit = unit.get_mut().await;
