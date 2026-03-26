@@ -207,7 +207,7 @@ impl SessionManager {
     }
 
     pub(crate) async fn current_login_mode(&self) -> Result<LoginMode> {
-        if self.unit_is_active("gamescope-session-plus@steam-plus.service").await? {
+        if self.unit_is_active("gamescope-session-plus@ogui-steam.service").await? {
             return Ok(LoginMode::Game);
         }
         Ok(LoginMode::Desktop)
@@ -348,7 +348,7 @@ impl Service for SessionManagerService {
     const NAME: &'static str = "session-manager";
 
     async fn run(&mut self) -> Result<()> {
-        let unit = SystemdUnit::new(&self.session, "gamescope-session-plus@steam-plus.service").await?;
+        let unit = SystemdUnit::new(&self.session, "gamescope-session-plus@ogui-steam.service").await?;
 
         let stream = unit
             .proxy
