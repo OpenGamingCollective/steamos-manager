@@ -250,7 +250,7 @@ pub(crate) async fn session_config() -> SessionConfig {
     match platform_config().await {
         Ok(config) => config
             .as_ref()
-            .map(|c| c.session.clone())
+            .map(|c| c.session.clone().unwrap_or_default())
             .unwrap_or_default(),
         Err(_) => SessionConfig::default(),
     }
