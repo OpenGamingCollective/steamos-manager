@@ -246,6 +246,7 @@ pub(crate) async fn platform_config() -> Result<Option<PlatformConfig>> {
     Ok(config)
 }
 
+#[cfg(not(test))]
 pub(crate) async fn session_config() -> SessionConfig {
     match platform_config().await {
         Ok(config) => config
