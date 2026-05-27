@@ -258,6 +258,16 @@ pub(crate) async fn session_config() -> SessionConfig {
 }
 
 #[cfg(test)]
+pub(crate) async fn session_config() -> SessionConfig {
+    platform_config()
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_default()
+        .session
+        .unwrap_or_default()
+}
+#[cfg(test)]
 mod test {
     use super::*;
     use crate::{path, testing};
