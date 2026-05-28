@@ -269,6 +269,7 @@ pub(crate) async fn set_wifi_debug_mode(
 //
 // Originally discussed in:
 // https://gitlab.steamos.cloud/holo/holo/-/merge_requests/747
+#[cfg(feature = "wifi-backend-switching")]
 async fn ensure_default_interface() -> Result<()> {
     if !list_wifi_interfaces().await?.is_empty() {
         return Ok(());
@@ -350,25 +351,28 @@ async fn set_nm_settings(
     let unit = SystemdUnit::new(connection, "NetworkManager.service").await?;
 
     if restart {
-        let backend_unit = SystemdUnit::new(
-            connection,
-            match backend {
-                WifiBackend::Iwd => "wpa_supplicant.service",
-                WifiBackend::WPASupplicant => "iwd.service",
-            },
-        )
-        .await?;
+        #[cfg(feature = "wifi-backend-switching")]
+        {
+            let backend_unit = SystemdUnit::new(
+                connection,
+                match backend {
+                    WifiBackend::Iwd => "wpa_supplicant.service",
+                    WifiBackend::WPASupplicant => "iwd.service",
+                },
+            )
+            .await?;
 
-        unit.stop(JobMode::Fail).await?.wait().await?;
-        // These systemd units are not set to enabled permanently, NetworkManager will pull them as necessary
-        backend_unit.disable().await?;
-        backend_unit.stop(JobMode::Fail).await?.wait().await?;
+            unit.stop(JobMode::Fail).await?.wait().await?;
+            // These systemd units are not set to enabled permanently, NetworkManager will pull them as necessary
+            backend_unit.disable().await?;
+            backend_unit.stop(JobMode::Fail).await?.wait().await?;
 
-        // Restart NetworkManager even if this fails, otherwise the system is
-        // left with no networking at all
-        let res = ensure_default_interface().await;
-        unit.start(JobMode::Fail).await?;
-        res?;
+            // Restart NetworkManager even if this fails, otherwise the system is
+            // left with no networking at all
+            let res = ensure_default_interface().await;
+            unit.start(JobMode::Fail).await?;
+            res?;
+        }
     } else {
         unit.reload(JobMode::Fail).await?.wait().await?;
     }
@@ -379,6 +383,7 @@ pub(crate) async fn get_wifi_backend() -> Result<WifiBackend> {
     Ok(get_nm_settings().await?.backend)
 }
 
+#[cfg(feature = "wifi-backend-switching")]
 pub(crate) async fn set_wifi_backend(backend: WifiBackend, connection: &Connection) -> Result<()> {
     let mut settings = get_nm_settings().await?;
     settings.backend = backend;
@@ -671,6 +676,7 @@ mod test {
         );
     }
 
+    #[cfg(feature = "wifi-backend-switching")]
     #[tokio::test]
     async fn test_set_nm_settings_restart() {
         let mut h = testing::start();

@@ -1421,6 +1421,7 @@ impl WifiBackend1 {
         }
     }
 
+    #[cfg(feature = "wifi-backend-switching")]
     #[zbus(property)]
     async fn set_wifi_backend(
         &self,
@@ -1464,6 +1465,7 @@ impl WifiDebug1 {
         }
     }
 
+    #[cfg(feature = "wifi-backend-switching")]
     #[zbus(property)]
     async fn set_wifi_backend(
         &self,
