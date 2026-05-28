@@ -1821,7 +1821,8 @@ mod test {
         SteamDeckVariant, TdpLimitConfig,
     };
     use crate::platform::{
-        FormatDeviceConfig, PlatformConfig, ResetConfig, ScriptConfig, ServiceConfig, StorageConfig,
+        FormatDeviceConfig, PlatformConfig, ResetConfig, ScriptConfig, ServiceConfig,
+        SessionConfig, StorageConfig,
     };
     use crate::power::{BatteryChargeLimitMethod, TdpLimitingMethod, TdpManagerService};
     use crate::proxy::{LowPowerMode1Proxy, RemoteInterface1Proxy};
@@ -1904,6 +1905,7 @@ mod test {
             fan_control: Some(ServiceConfig::Systemd(String::from(
                 "jupiter-fan-control.service",
             ))),
+            session: Some(SessionConfig::default()),
         })
     }
 
