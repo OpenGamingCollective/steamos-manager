@@ -168,6 +168,7 @@ enum Commands {
     SuggestedDefaultPerformanceProfile,
 
     /// Set the Wi-Fi backend, if possible
+    #[cfg(feature = "wifi-backend-switching")]
     SetWifiBackend {
         /// Supported backends are `iwd`, `wpa_supplicant`
         backend: WifiBackend,
@@ -602,6 +603,7 @@ async fn main() -> Result<()> {
             let value = proxy.tdp_limit_min().await?;
             println!("TDP limit min: {value}");
         }
+        #[cfg(feature = "wifi-backend-switching")]
         Commands::SetWifiBackend { backend } => {
             let proxy = WifiBackend1Proxy::new(&conn).await?;
             proxy.set_wifi_backend(backend.to_string().as_str()).await?;
