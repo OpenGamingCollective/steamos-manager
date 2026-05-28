@@ -38,3 +38,7 @@ udev = { version = "^0.9.3", features = ["send", "sync"] }
 xdg = "3.0"
 zbus = { version = "6", features = ["tokio"] }
 zbus_xml = "6"
+
+[features]
+default = []
+wifi-backend-switching = []

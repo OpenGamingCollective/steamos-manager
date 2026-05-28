@@ -42,9 +42,11 @@ use crate::session::root::{clean_temporary_sessions, set_default_session, set_te
 use crate::sysfs::SysfsWritten;
 use crate::systemd::{JobMode, SystemdUnit};
 use crate::wifi::{
-    WifiBackend, WifiDebugMode, WifiPowerManagement, extract_wifi_trace, generate_wifi_dump,
-    set_wifi_backend, set_wifi_debug_mode, set_wifi_power_management_state,
+    WifiDebugMode, WifiPowerManagement, extract_wifi_trace, generate_wifi_dump,
+    set_wifi_debug_mode, set_wifi_power_management_state,
 };
+#[cfg(feature = "wifi-backend-switching")]
+use crate::wifi::{WifiBackend, set_wifi_backend};
 use crate::{ArcMutexBox, SerialOrderValidator, path};
 
 #[derive(PartialEq, Debug, Copy, Clone)]
@@ -652,6 +654,7 @@ impl SteamOSManager {
         }
     }
 
+    #[cfg(feature = "wifi-backend-switching")]
     async fn set_wifi_backend(&mut self, backend: u32) -> fdo::Result<()> {
         if self.wifi_debug_mode == WifiDebugMode::Tracing {
             return Err(fdo::Error::Failed(String::from(
