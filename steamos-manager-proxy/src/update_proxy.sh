@@ -3,7 +3,7 @@ set -e
 zbus-xmlgen file ../../data/interfaces/com.steampowered.SteamOSManager1.xml
 
 for f in *.rs; do
-    if [ "$f" == "lib.rs" ]; then
+    if [ "$f" = "lib.rs" ]; then
         continue
     fi
 
