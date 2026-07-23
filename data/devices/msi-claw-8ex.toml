@@ -1,15 +1,12 @@
 [[device]]
 dmi.sys_vendor = "Micro-Star International Co., Ltd."
-dmi.board_name = "MS-1T8K"
+dmi.board_name = "MS-1T91"
 device = "claw"
-variant = "Claw A8 BZ2EM"
+variant = "Claw 8 EX AI+ CG3EM"
 friendly_name = "MSI Claw"
 
 [gpu_performance]
-driver = "amdgpu"
-
-[gpu_power_profile]
-driver = "amdgpu"
+driver = "intel"
 
 [performance_profile]
 platform_profile_name = "msi-wmi-platform"
@@ -20,7 +17,7 @@ method = "firmware_attribute"
 
 [tdp_limit.firmware_attribute]
 attribute = "msi-wmi-platform"
-performance_profile = "performance"
+performance_profile = "custom"
 
 [inputplumber]
 target_devices = ["deck-uhid", "keyboard"]
