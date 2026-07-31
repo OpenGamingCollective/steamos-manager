@@ -28,10 +28,24 @@ friendly_name = "GPD WIN MAX 2"
 
 [[device]]
 dmi.sys_vendor = "GPD"
+dmi.product_name = "G1619-05"
+device = "gpd_win_max_2"
+variant = "G1619-05"
+friendly_name = "GPD WIN MAX 2 HX370"
+
+[[device]]
+dmi.sys_vendor = "GPD"
 dmi.product_name = "G1617-01"
 device = "gpd_win_mini"
 variant = "G1617-01"
 friendly_name = "GPD WIN Mini"
+
+[[device]]
+dmi.sys_vendor = "GPD"
+dmi.product_name = "G1617-02"
+device = "gpd_win_mini"
+variant = "G1617-02"
+friendly_name = "GPD WIN Mini HX370"
 
 [gpu_performance]
 driver = "amdgpu"
