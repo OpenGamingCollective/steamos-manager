@@ -133,6 +133,8 @@ pub enum TdpLimitingMethod {
     FirmwareAttribute,
     RemoteInterface,
     PowerStation,
+    // Explicitly opts a device out of TDP limiting entirely
+    None,
 }
 
 #[derive(Debug)]
@@ -199,6 +201,7 @@ pub(crate) async fn tdp_limit_manager(system: &Connection) -> Result<Box<dyn Tdp
             TdpLimitingMethod::PowerStation => Box::new(PowerStationTdpLimitManager {
                 gpu_card_path: StdMutex::new(None),
             }),
+            TdpLimitingMethod::None => bail!("TDP limiting disabled by device configuration"),
         })
     } else {
         Ok(Box::new(RemoteInterfaceLimitManager {
@@ -2427,5 +2430,26 @@ pub(crate) mod test {
 
         manager.set_tdp_limit(2).await.unwrap_err();
         assert_eq!(manager.get_tdp_limit().await.unwrap(), 7);
+    }
+
+    #[tokio::test]
+    async fn test_tdp_limiting_disabled() {
+        let mut h = testing::start();
+        setup().await.expect("setup");
+
+        let connection = h.new_dbus().await.expect("new_dbus");
+        let config = DeviceConfig {
+            tdp_limit: Some(TdpLimitConfig {
+                method: TdpLimitingMethod::None,
+                range: None,
+                download_mode_limit: None,
+                firmware_attribute: None,
+                performance_profile: None,
+            }),
+            ..DeviceConfig::default()
+        };
+        h.test.set_device_config(config).await;
+
+        assert!(tdp_limit_manager(&connection).await.is_err());
     }
 }
