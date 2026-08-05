@@ -415,13 +415,19 @@ impl DeviceConfig {
         }
 
         // 3. Phase 2: Global wildcard matching
+        let mut catch_all = None;
         for config in &configs {
-            if config.wildcard_device_match().await?.is_some() {
+            let Some(device) = config.wildcard_device_match().await? else {
+                continue;
+            };
+            if device.dmi.as_ref().is_none_or(|dmi| dmi.sys_vendor == "*") {
+                catch_all.get_or_insert(config);
+            } else {
                 return Ok(Some(config.clone()));
             }
         }
 
-        Ok(None)
+        Ok(catch_all.cloned())
     }
 
     async fn read_from_path(path: impl AsRef<Path>) -> Result<DeviceConfig> {
