@@ -96,6 +96,7 @@ pub enum GpuPowerProfileDriverType {
 pub enum GpuPerformanceLevelDriverType {
     Amdgpu,
     Intel,
+    None,
 }
 
 #[derive(Debug)]
@@ -182,6 +183,9 @@ pub(crate) async fn gpu_performance_level_driver() -> Result<Box<dyn GpuPerforma
         GpuPerformanceLevelDriverType::Amdgpu => Box::new(AmdgpuPerformanceLevelDriver {}),
         GpuPerformanceLevelDriverType::Intel => {
             Box::new(IntelGpuPerformanceLevelDriver::new().await?)
+        }
+        GpuPerformanceLevelDriverType::None => {
+            bail!("GPU performance level control disabled by device configuration")
         }
     })
 }
