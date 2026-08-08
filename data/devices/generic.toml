@@ -6,3 +6,6 @@ variant = "Generic"
 
 [tdp_limit]
 method = "none"
+
+[gpu_performance]
+driver = "none"

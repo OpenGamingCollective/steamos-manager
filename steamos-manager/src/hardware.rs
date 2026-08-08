@@ -186,6 +186,7 @@ pub(crate) enum GpuPerformanceDriverConfig {
     Amdgpu,
     Intel,
     Devfreq { sysfs_path: PathBuf },
+    None,
 }
 
 #[derive(Clone, Deserialize, Debug)]

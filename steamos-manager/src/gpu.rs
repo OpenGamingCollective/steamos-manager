@@ -229,6 +229,7 @@ pub enum GpuPerformanceLevelDriverType {
     Amdgpu,
     Intel,
     Devfreq,
+    None,
 }
 
 #[derive(Debug)]
@@ -385,6 +386,9 @@ async fn new_gpu_performance_level_driver() -> Result<Box<dyn GpuPerformanceLeve
         GpuPerformanceDriverConfig::Intel => Box::new(IntelGpuPerformanceLevelDriver::new().await?),
         GpuPerformanceDriverConfig::Devfreq { .. } => {
             Box::new(DevfreqGpuPerformanceLevelDriver::new().await?)
+        }
+        GpuPerformanceDriverConfig::None => {
+            bail!("GPU performance level control disabled by device configuration")
         }
     })
 }
