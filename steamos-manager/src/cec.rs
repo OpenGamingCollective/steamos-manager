@@ -483,7 +483,8 @@ impl Service for CecdService {
                             None
                         };
                     },
-                    _ = device_added.next() => (), // Drain these ever if we're not using them
+                    Some(_) = device_added.next() => (), // Drain these ever if we're not using them
+                    else => bail!("cecd signal streams terminated"),
                 };
             } else {
                 select! {
@@ -502,7 +503,8 @@ impl Service for CecdService {
                             None
                         };
                     },
-                    _ = device_removed.next() => (), // Drain these even if we're not using them
+                    Some(_) = device_removed.next() => (), // Drain these even if we're not using them
+                    else => bail!("cecd signal streams terminated"),
                 };
             }
         }
@@ -515,6 +517,8 @@ mod test {
 
     use std::collections::HashMap;
     use tokio::fs::{read_to_string, try_exists};
+    use tokio::spawn;
+    use tokio::time::timeout;
     use zbus::fdo::{self, ObjectManager};
     use zbus::{ObjectServer, interface};
 
@@ -939,5 +943,40 @@ mod test {
         assert_eq!(cec_hw.get().await.phys_addr, 0xFFFF);
         service.reconfigure().await.unwrap();
         assert_eq!(cec_hw.get().await.phys_addr, 0x1234);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_cecd_service_bus_disconnect() {
+        let test = setup_cec_hw_test(MockCecHw {
+            can_awaken: true,
+            phys_addr: 0xFFFF,
+            awaken: false,
+        })
+        .await
+        .unwrap();
+
+        let proxy = Config1Proxy::new(&test.connection).await.unwrap();
+        let daemon = Daemon1Proxy::new(&test.connection).await.unwrap();
+        let mut service = CecdService::new(
+            &test.connection,
+            &HdmiCecControl {
+                connection: test.connection.clone(),
+                proxy,
+                daemon,
+            },
+        )
+        .await
+        .unwrap();
+
+        // `run()` rescans before looping, so the connection has to stay up
+        // until the loop is actually running.
+        let running = spawn(async move { service.run().await });
+        sleep(Duration::from_millis(200)).await;
+        test.connection.clone().close().await.unwrap();
+
+        let res = timeout(Duration::from_secs(5), running)
+            .await
+            .expect("run() must return once the bus connection is gone");
+        assert!(res.unwrap().is_err());
     }
 }
