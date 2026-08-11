@@ -43,6 +43,7 @@ use crate::gpu::{
 use crate::hardware::{
     SteamDeckVariant, device_config, device_type, device_variant, steam_deck_variant,
 };
+use crate::inputplumber::InterceptModeService;
 use crate::job::JobManagerCommand;
 use crate::manager::root::{RootManagerProxy, SteamOSManagerSignals};
 use crate::manager::{MANAGER_PATH, RemoteInterface, RemoteInterfaceConfig, RemoteOwner};
@@ -1839,6 +1840,7 @@ pub(crate) struct UserServices {
     pub session_manager: Option<SessionManagerService>,
     pub screenreader_setup: Option<ScreenReaderSetupService>,
     pub cecd: Option<CecdService>,
+    pub intercept_mode: Option<InterceptModeService>,
 }
 
 pub(crate) async fn create_interfaces(
@@ -2000,7 +2002,7 @@ pub(crate) async fn create_interfaces(
                 MANAGER_PATH,
                 HdmiCec2 {
                     hdmi_cec,
-                    manager: root_manager,
+                    manager: root_manager.clone(),
                 },
             )
             .await?;
@@ -2010,10 +2012,15 @@ pub(crate) async fn create_interfaces(
 
     let mut session_manager_service = None;
     let mut screenreader_setup_service = None;
+    let mut intercept_mode_service = None;
     if is_session_managed().await? {
         match session_management.manager.create_service().await {
             Ok((service, channel)) => {
                 session_manager_service = Some(service);
+                intercept_mode_service = Some(InterceptModeService {
+                    manager: root_manager.clone(),
+                    channel: channel.resubscribe(),
+                });
                 screenreader_setup_service = Some(ScreenReaderSetupService {
                     session: session.clone(),
                     channel,
@@ -2057,6 +2064,7 @@ pub(crate) async fn create_interfaces(
         session_manager: session_manager_service,
         screenreader_setup: screenreader_setup_service,
         cecd: cecd_service,
+        intercept_mode: intercept_mode_service,
     })
 }
 

@@ -118,6 +118,7 @@ pub(crate) trait RootManager {
     fn set_temporary_session(&self, session: &str) -> zbus::Result<()>;
     fn set_default_session(&self, session: &str) -> zbus::Result<()>;
     fn set_fan_speed(&self, rpm: u32) -> zbus::Result<()>;
+    fn reset_intercept_modes(&self) -> zbus::Result<()>;
 
     #[zbus(property)]
     fn fan_control_state(&self) -> zbus::Result<u32>;
@@ -751,6 +752,13 @@ impl SteamOSManager {
             .map_err(to_zbus_fdo_error)
     }
 
+    async fn reset_intercept_modes(&self) -> fdo::Result<()> {
+        info!("Resetting InputPlumber intercept modes");
+        crate::inputplumber::reset_intercept_modes(&self.connection)
+            .await
+            .map_err(to_zbus_fdo_error)
+    }
+
     async fn clean_temporary_sessions(&self) -> fdo::Result<()> {
         info!("Cleaning temporary sessions");
         clean_temporary_sessions().await.map_err(to_zbus_fdo_error)
@@ -971,6 +979,26 @@ mod test {
         );
 
         test.connection.close().await.unwrap();
+    }
+
+    #[zbus::proxy(
+        interface = "com.steampowered.SteamOSManager1.RootManager",
+        default_path = "/com/steampowered/SteamOSManager1"
+    )]
+    trait ResetInterceptModes {
+        fn reset_intercept_modes(&self) -> zbus::Result<()>;
+    }
+
+    #[tokio::test]
+    async fn reset_intercept_modes_without_inputplumber() {
+        let test = start().await.expect("start");
+
+        let name = test.connection.unique_name().unwrap();
+        let proxy = ResetInterceptModesProxy::new(&test.connection, name.clone())
+            .await
+            .unwrap();
+
+        assert!(proxy.reset_intercept_modes().await.is_ok());
     }
 
     #[zbus::proxy(

@@ -238,6 +238,9 @@ pub async fn daemon() -> Result<()> {
     if let Some(service) = services.cecd {
         daemon.add_service(service);
     }
+    if let Some(service) = services.intercept_mode {
+        daemon.add_service(service);
+    }
 
     let context = UserContext {
         session,
