@@ -19,8 +19,5 @@ method = "firmware_attribute"
 attribute = "msi-wmi-platform"
 performance_profile = "custom"
 
-[inputplumber]
-target_devices = ["deck-uhid", "keyboard"]
-
 [battery_charge_limit]
 method = "acpi_sb"

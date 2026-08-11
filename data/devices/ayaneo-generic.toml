@@ -6,6 +6,3 @@ variant = "AYANEO_Generic"
 
 [tdp_limit]
 method = "power_station"
-
-[inputplumber]
-target_devices = ["deck-uhid", "keyboard", "mouse"]

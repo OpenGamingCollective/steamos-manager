@@ -1079,6 +1079,24 @@ pub mod test {
         assert!(FanControlState::from_str("on").is_err());
     }
 
+    #[test]
+    fn inputplumber_target_devices_parse() {
+        let config: InputPlumberConfig =
+            toml::from_str(r#"target_devices = ["deck-uhid", "keyboard", "mouse"]"#).unwrap();
+        assert_eq!(
+            config.target_devices,
+            [
+                InputPlumberTargetDevice::DeckUhid,
+                InputPlumberTargetDevice::Keyboard,
+                InputPlumberTargetDevice::Mouse,
+            ]
+        );
+        assert!(toml::from_str::<InputPlumberConfig>(r#"target_devices = ["none"]"#).is_err());
+
+        let config: InputPlumberConfig = toml::from_str("").unwrap();
+        assert!(config.target_devices.is_empty());
+    }
+
     #[derive(Default)]
     struct MockUnit {
         active: bool,

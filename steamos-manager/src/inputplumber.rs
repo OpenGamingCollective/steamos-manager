@@ -8,7 +8,7 @@
 use anyhow::Result;
 use tokio::spawn;
 use tokio_stream::StreamExt;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use zbus::Connection;
 use zbus::fdo::{InterfacesAdded, ObjectManagerProxy};
 use zbus::names::OwnedInterfaceName;
@@ -16,7 +16,7 @@ use zbus::proxy::CacheProperties;
 use zbus::zvariant::ObjectPath;
 
 use crate::Service;
-use crate::hardware::{InputPlumberTargetDevice, device_config};
+use crate::hardware::{InputPlumberConfig, InputPlumberTargetDevice, device_config};
 
 #[zbus::proxy(
     interface = "org.shadowblip.Input.CompositeDevice",
@@ -42,6 +42,17 @@ trait Target {
 pub struct DeckService {
     connection: Connection,
     composite_device_iface_name: OwnedInterfaceName,
+}
+
+/// Returns the target devices to apply, or `None` if target device management is
+/// disabled for this device, which is the case whenever no target devices are
+/// configured.
+fn resolve_targets(config: Option<&InputPlumberConfig>) -> Option<&[InputPlumberTargetDevice]> {
+    let targets = config?.target_devices.as_slice();
+    if targets.is_empty() {
+        return None;
+    }
+    Some(targets)
 }
 
 impl DeckService {
@@ -103,12 +114,12 @@ impl DeckService {
             .await?;
         if !self.is_deck(&proxy).await? {
             let config = device_config().await?;
-            let targets: &[_] = config
-                .as_ref()
-                .and_then(|c| c.inputplumber.as_ref())
-                .map_or(&[InputPlumberTargetDevice::DeckUhid], |ip| {
-                    ip.target_devices.as_slice()
-                });
+            let Some(targets) =
+                resolve_targets(config.as_ref().and_then(|c| c.inputplumber.as_ref()))
+            else {
+                debug!("Target device management disabled for CompositeDevice {path}");
+                return Ok(());
+            };
             let new_targets: Vec<&str> = targets.iter().map(AsRef::as_ref).collect();
 
             debug!(
@@ -155,5 +166,43 @@ impl Service for DeckService {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn resolve_targets_disabled_without_config() {
+        assert_eq!(resolve_targets(None), Option::None);
+    }
+
+    #[test]
+    fn resolve_targets_passes_through_configured_list() {
+        let config = InputPlumberConfig {
+            target_devices: vec![
+                InputPlumberTargetDevice::DeckUhid,
+                InputPlumberTargetDevice::Keyboard,
+            ],
+        };
+        assert_eq!(
+            resolve_targets(Some(&config)),
+            Some(
+                [
+                    InputPlumberTargetDevice::DeckUhid,
+                    InputPlumberTargetDevice::Keyboard,
+                ]
+                .as_slice()
+            )
+        );
+    }
+
+    #[test]
+    fn resolve_targets_disabled_by_empty_list() {
+        let config = InputPlumberConfig {
+            target_devices: Vec::new(),
+        };
+        assert_eq!(resolve_targets(Some(&config)), Option::None);
     }
 }

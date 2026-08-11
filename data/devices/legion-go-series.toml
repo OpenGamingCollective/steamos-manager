@@ -37,6 +37,3 @@ method = "firmware_attribute"
 [tdp_limit.firmware_attribute]
 attribute = "lenovo-wmi-other-0"
 performance_profile = "custom"
-
-[inputplumber]
-target_devices = ["deck-uhid", "keyboard", "mouse"]
