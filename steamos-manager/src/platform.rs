@@ -45,6 +45,21 @@ impl Default for SessionConfig {
     }
 }
 
+#[derive(Clone, Deserialize, Debug)]
+#[serde(default)]
+pub(crate) struct ScxConfig {
+    pub scx_service: String,
+}
+
+impl Default for ScxConfig {
+    fn default() -> Self {
+        ScxConfig {
+            scx_service: String::from("scx.service"),
+        }
+    }
+}
+
+
 #[derive(Clone, Default, Deserialize, Debug)]
 #[serde(default)]
 pub(crate) struct PlatformConfig {
@@ -54,6 +69,7 @@ pub(crate) struct PlatformConfig {
     pub storage: Option<StorageConfig>,
     pub fan_control: Option<ServiceConfig>,
     pub session: Option<SessionConfig>,
+    pub scx: Option<ScxConfig>
 }
 
 #[derive(Clone, Default, Deserialize, Debug)]
@@ -267,6 +283,29 @@ pub(crate) async fn session_config() -> SessionConfig {
         .session
         .unwrap_or_default()
 }
+
+#[cfg(not(test))]
+pub(crate) async fn scx_config() -> ScxConfig {
+    match platform_config().await {
+        Ok(config) => config
+            .as_ref()
+            .map(|c| c.scx.clone().unwrap_or_default())
+            .unwrap_or_default(),
+        Err(_) => ScxConfig::default(),
+    }
+}
+
+#[cfg(test)]
+pub(crate) async fn scx_config() -> ScxConfig {
+    platform_config()
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_default()
+        .scx
+        .unwrap_or_default()
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
