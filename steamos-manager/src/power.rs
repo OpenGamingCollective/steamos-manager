@@ -46,6 +46,7 @@ use crate::hardware::{
 use crate::manager::MANAGER_PATH;
 use crate::manager::root::RootManagerProxy;
 use crate::manager::user::TdpLimit1;
+use crate::platform::scx_config;
 use crate::proxy::TdpLimit1Proxy;
 use crate::sysfs::{SysfsWritten, find_sysdir, sysfs_queued_write};
 use crate::systemd::{EnableState, JobMode, SystemdUnit};
@@ -419,10 +420,17 @@ impl<'dbus> CpuSchedulerManager<'dbus> {
         let connection = system_connection().await?;
         // Try to create a SystemdUnit for scx.service; if systemd isn't available in the
         // test DBus environment, treat the service as not installed instead of failing.
-        let scx_unit = SystemdUnit::new(&connection, "scx.service")
-            .await
-            .inspect_err(|e| warn!("Could not create SystemdUnit for scx.service: {e}"))
-            .ok();
+
+        // Load config for scx from the platform config.
+        let config = scx_config().await;
+        
+        let scx_unit = match SystemdUnit::new(&connection, &config.scx_service).await {
+            Ok(u) => Some(u),
+            Err(e) => {
+                warn!("Could not create SystemdUnit for {}: {e}", &config.scx_service);
+                None
+            }
+        };
 
         let current = if let Some(ref u) = scx_unit {
             match u.enabled().await {
@@ -475,7 +483,7 @@ impl<'dbus> CpuSchedulerManager<'dbus> {
                     self.current = CpuScheduler::LAVD;
                 } else {
                     // service not present; remain at None
-                    bail!("Cannot set CPU scheduler to LAVD; scx.service not installed");
+                    bail!("Cannot set CPU scheduler to LAVD; no scx systemd unit installed");
                 }
             }
         }
