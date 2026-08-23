@@ -883,6 +883,21 @@ pub mod test {
     }
 
     #[tokio::test]
+    async fn board_lookup_onexplayer_3() {
+        let _h = setup_board("ONE-NETBOOK\n", "ONEXPLAYER 3\n", "ONEXPLAYER 3\n")
+            .await
+            .unwrap();
+        assert_eq!(
+            steam_deck_variant().await.unwrap(),
+            SteamDeckVariant::Unknown
+        );
+        assert_eq!(
+            device_variant().await.unwrap(),
+            (String::from("onexplayer_3"), String::from("ONEXPLAYER 3"))
+        );
+    }
+
+    #[tokio::test]
     async fn board_lookup_steam_deck_jupiter() {
         let _h = setup_board("Valve\n", "Jupiter\n", "Jupiter\n")
             .await
