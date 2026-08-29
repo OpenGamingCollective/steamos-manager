@@ -36,24 +36,11 @@ this, but this mostly consists of installing `rustup` from the
 an initial toolchain, or just installing the regular `rust` package for a
 system-managed installation.
 
+Some of the Rust dependencies require Clang, which requires to install the
+`clang` package on most distributions.
+
 Once you have that and `cargo` is in your path, to build the project you can
 use `cargo build`.
-
-## Troubleshooting
-
-- `cargo build` fails with this error:
-
-  ```
-  --- stderr
-  /usr/include/stdio.h:34:10: fatal error: 'stddef.h' file not found
-  ```
-
-  Solution: make sure clang is setup on your machine! (eg: `pacman -S clang`).
-
-- CI pipeline fails at 'proxy' job with local diffs.
-
-  Solution: use the `update_proxy.sh` script under `steamos-manager-proxy/src`.
-  You might need to run `cargo install zbus_xmlgen` first.
 
 # Developing
 
@@ -122,6 +109,16 @@ If the new functionality requires elevated privileges, instead extend the
 system daemon's DBus API in `src/manager/root.rs` with the necessary helpers to
 complete the task. However, you should keep as much logic as possible in the
 user daemon.
+
+## Rebuilding DBus proxies
+
+To update the auto-generated DBus proxie after updating the XML schema or
+upstream changes to `zbus_xmlgen`, run the `update_proxy.sh` script located
+under `steamos-manager-proxy/src`.
+
+This script requires the `zbus_xmlgen` package, which can be installed either
+through the native package manager on your distribution or with the
+`cargo install zbus_xmlgen` command.
 
 # Interoperability
 
