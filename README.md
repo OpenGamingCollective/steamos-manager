@@ -36,7 +36,7 @@ this, but this mostly consists of installing `rustup` from the
 an initial toolchain, or just installing the regular `rust` package for a
 system-managed installation.
 
-Some of the Rust dependencies require Clang, which requires to install the
+Some of the Rust dependencies require Clang, which require installing the
 `clang` package on most distributions.
 
 Once you have that and `cargo` is in your path, to build the project you can
