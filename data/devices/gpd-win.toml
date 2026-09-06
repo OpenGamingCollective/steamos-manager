@@ -47,6 +47,13 @@ device = "gpd_win_mini"
 variant = "G1617-02"
 friendly_name = "GPD WIN Mini HX370"
 
+[[device]]
+dmi.sys_vendor = "GPD"
+dmi.product_name = "G1628-04"
+device = "gpd_win_pocket_4"
+variant = "G1628-04"
+friendly_name = "GPD WIN Pocket 4"
+
 [gpu_performance]
 driver = "amdgpu"
 
