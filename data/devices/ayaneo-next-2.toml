@@ -1,0 +1,15 @@
+[[device]]
+dmi.sys_vendor = "AYA"
+dmi.product_name = "AB09"
+device = "ayaneo_2"
+variant = "NEXT 2"
+friendly_name = "AYANEO NEXT 2"
+
+[gpu_performance]
+driver = "amdgpu"
+
+[gpu_power_profile]
+driver = "amdgpu"
+
+[tdp_limit]
+method = "power_station"
