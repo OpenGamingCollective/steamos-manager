@@ -892,7 +892,7 @@ impl PowerStationTdpLimitManager {
             let class: String = class.try_into()?;
 
             // If we find a discrete GPU, use it
-            if class == "discrete" {
+            if class == "dedicated" {
                 return Ok(card_path);
             }
         }
