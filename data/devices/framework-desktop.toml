@@ -1,0 +1,23 @@
+[[device]]
+dmi.sys_vendor = "Framework"
+dmi.product_name = "Desktop (AMD Ryzen AI Max 300 Series)"
+device = "framework_desktop"
+variant = "Desktop"
+friendly_name = "Framework Desktop"
+
+[gpu_performance]
+driver = "amdgpu"
+
+[gpu_power_profile]
+driver = "amdgpu"
+
+[performance_profile]
+platform_profile_name = "amd-pmf"
+suggested_default = "performance"
+
+[tdp_limit]
+method = "power_station"
+
+[tdp_limit.firmware_attribute]
+attribute = "amd-pmf"
+performance_profile = "performance"
