@@ -11,5 +11,10 @@ driver = "amdgpu"
 [gpu_power_profile]
 driver = "amdgpu"
 
+[performance_profile]
+method = "power_station"
+suggested_default = "performance"
+
 [tdp_limit]
 method = "power_station"
+performance_profile = "performance"

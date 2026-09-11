@@ -32,7 +32,9 @@ use zbus::{Connection, ObjectServer, fdo};
 
 use crate::error::{to_zbus_error, to_zbus_fdo_error};
 use crate::gpu::AMDGPU_HWMON_NAME;
-use crate::hardware::{FanControlState, device_config};
+use crate::hardware::{
+    FanControlState, PerformanceProfileConfig, PerformanceProfileMethod, device_config,
+};
 use crate::manager::MANAGER_PATH;
 use crate::manager::root::RootManagerProxy;
 use crate::manager::user::TdpLimit1;
@@ -210,7 +212,8 @@ pub(crate) async fn tdp_limit_manager(system: &Connection) -> Result<Box<dyn Tdp
                 performance_profile: config
                     .firmware_attribute
                     .as_ref()
-                    .and_then(|config| config.performance_profile.clone()),
+                    .and_then(|config| config.performance_profile.clone())
+                    .or_else(|| config.performance_profile.clone()),
             }),
             TdpLimitingMethod::None => bail!("TDP limiting disabled by device configuration"),
         })
@@ -528,7 +531,7 @@ impl TdpLimitManager for AmdgpuHwmonTdpLimitManager {
             .as_ref()
             .and_then(|config| config.performance_profile.as_ref())
         {
-            Ok(get_platform_profile(&config.platform_profile_name).await? == *performance_profile)
+            Ok(get_performance_profile(config).await? == *performance_profile)
         } else {
             Ok(true)
         }
@@ -645,7 +648,7 @@ impl TdpLimitManager for FirmwareAttributeLimitManager {
             .as_ref()
             .and_then(|config| config.performance_profile.as_ref())
         {
-            Ok(get_platform_profile(&config.platform_profile_name).await? == *performance_profile)
+            Ok(get_performance_profile(config).await? == *performance_profile)
         } else {
             Ok(true)
         }
@@ -756,13 +759,22 @@ impl PowerStationTdpLimitManager {
     }
 
     async fn is_performance_profile_active(&self) -> Result<bool> {
-        let Some(platform_profile_name) = self.platform_profile_name.as_ref() else {
-            return Ok(true);
-        };
         let Some(performance_profile) = self.performance_profile.as_ref() else {
             return Ok(true);
         };
-        Ok(get_platform_profile(platform_profile_name).await? == *performance_profile)
+        if let Some(platform_profile_name) = self.platform_profile_name.as_ref() {
+            return Ok(
+                get_platform_profile(platform_profile_name).await? == *performance_profile
+            );
+        }
+        let config = device_config().await?;
+        let Some(config) = config
+            .as_ref()
+            .and_then(|config| config.performance_profile.as_ref())
+        else {
+            return Ok(true);
+        };
+        Ok(get_performance_profile(config).await? == *performance_profile)
     }
 
     // Query all available GPU cards from PowerStation
@@ -883,6 +895,49 @@ impl PowerStationTdpLimitManager {
             .inspect_err(|message| error!("Error calling Set: {message}"))?;
 
         Ok(())
+    }
+
+    async fn set_power_profile(&self, profile: &str) -> Result<()> {
+        let connection = Connection::system().await?;
+        let card_path = self.find_gpu_card_path().await?;
+        let path = ObjectPath::try_from(card_path.as_str())?;
+        let proxy = zbus::Proxy::new(
+            &connection,
+            Self::DBUS_SERVICE_NAME,
+            path,
+            Self::DBUS_INTERFACE_PROPERTIES,
+        )
+        .await?;
+        proxy
+            .call::<_, _, ()>(
+                "Set",
+                &(
+                    Self::DBUS_TDP_INTERFACE,
+                    "PowerProfile",
+                    zbus::zvariant::Value::from(profile),
+                ),
+            )
+            .await?;
+        Ok(())
+    }
+
+    async fn get_power_station_property(&self, property_name: &str) -> Result<OwnedValue> {
+        let connection = Connection::system().await?;
+        let card_path = self.find_gpu_card_path().await?;
+        let path = ObjectPath::try_from(card_path.as_str())?;
+        let proxy = zbus::Proxy::new(
+            &connection,
+            Self::DBUS_SERVICE_NAME,
+            path,
+            Self::DBUS_INTERFACE_PROPERTIES,
+        )
+        .await?;
+        Ok(proxy
+            .call::<_, _, OwnedValue>(
+                "Get",
+                &(Self::DBUS_TDP_INTERFACE, property_name),
+            )
+            .await?)
     }
 
     // Helper method to get property values from D-Bus
@@ -1082,6 +1137,63 @@ pub(crate) async fn set_platform_profile(name: &str, profile: &str) -> Result<()
     fs::write(base.join("profile"), profile.as_bytes())
         .await
         .map_err(|message| anyhow!("Error writing to sysfs: {message}"))
+}
+
+fn configured_platform_profile_name(config: &PerformanceProfileConfig) -> Result<&str> {
+    config
+        .platform_profile_name
+        .as_deref()
+        .ok_or_else(|| anyhow!("No platform-profile name configured"))
+}
+
+fn power_station_profile_manager() -> PowerStationTdpLimitManager {
+    PowerStationTdpLimitManager {
+        gpu_card_path: StdMutex::new(None),
+        platform_profile_name: None,
+        performance_profile: None,
+    }
+}
+
+pub(crate) async fn get_available_performance_profiles(
+    config: &PerformanceProfileConfig,
+) -> Result<Vec<String>> {
+    match config.method {
+        PerformanceProfileMethod::PlatformProfile => {
+            get_available_platform_profiles(configured_platform_profile_name(config)?).await
+        }
+        PerformanceProfileMethod::PowerStation => power_station_profile_manager()
+            .get_power_station_property("PowerProfilesAvailable")
+            .await?
+            .try_into()
+            .map_err(Into::into),
+    }
+}
+
+pub(crate) async fn get_performance_profile(config: &PerformanceProfileConfig) -> Result<String> {
+    match config.method {
+        PerformanceProfileMethod::PlatformProfile => {
+            get_platform_profile(configured_platform_profile_name(config)?).await
+        }
+        PerformanceProfileMethod::PowerStation => power_station_profile_manager()
+            .get_power_station_property("PowerProfile")
+            .await?
+            .try_into()
+            .map_err(Into::into),
+    }
+}
+
+pub(crate) async fn set_configured_performance_profile(
+    config: &PerformanceProfileConfig,
+    profile: &str,
+) -> Result<()> {
+    match config.method {
+        PerformanceProfileMethod::PlatformProfile => {
+            set_platform_profile(configured_platform_profile_name(config)?, profile).await
+        }
+        PerformanceProfileMethod::PowerStation => {
+            power_station_profile_manager().set_power_profile(profile).await
+        }
+    }
 }
 
 pub(crate) async fn register_tdp_limit1(
@@ -1377,7 +1489,7 @@ pub(crate) mod test {
     use super::*;
     use crate::hardware::{
         BatteryChargeLimitConfig, DeviceConfig, FanSpeedConfig, FirmwareAttributeConfig,
-        PerformanceProfileConfig, RangeConfig, TdpLimitConfig,
+        PerformanceProfileConfig, PerformanceProfileMethod, RangeConfig, TdpLimitConfig,
     };
     use crate::{enum_on_off, enum_roundtrip, testing};
     use anyhow::anyhow;
@@ -2256,7 +2368,8 @@ pub(crate) mod test {
         let connection = h.new_dbus().await.expect("new_dbus");
         let config = DeviceConfig {
             performance_profile: Some(PerformanceProfileConfig {
-                platform_profile_name: String::from("platform-profile0"),
+                method: PerformanceProfileMethod::PlatformProfile,
+                platform_profile_name: Some(String::from("platform-profile0")),
                 suggested_default: String::from("custom"),
             }),
             tdp_limit: Some(TdpLimitConfig {

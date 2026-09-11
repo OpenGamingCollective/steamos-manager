@@ -35,8 +35,8 @@ use crate::job::JobManager;
 use crate::platform::{ServiceConfig, platform_config};
 use crate::power::{
     CPUBoostState, CPUScalingGovernor, CpuScheduler, CpuSchedulerManager, TdpLimitManager,
-    set_cpu_boost_state, set_cpu_scaling_governor, set_max_charge_level, set_platform_profile,
-    tdp_limit_manager,
+    set_configured_performance_profile, set_cpu_boost_state, set_cpu_scaling_governor,
+    set_max_charge_level, tdp_limit_manager,
 };
 use crate::process::{run_script, script_exit_code, script_output};
 use crate::session::root::{clean_temporary_sessions, set_default_session, set_temporary_session};
@@ -733,7 +733,7 @@ impl SteamOSManager {
             .ok_or(fdo::Error::Failed(String::from(
                 "No performance platform-profile configured",
             )))?;
-        set_platform_profile(&config.platform_profile_name, profile)
+        set_configured_performance_profile(config, profile)
             .await
             .map_err(to_zbus_fdo_error)
     }

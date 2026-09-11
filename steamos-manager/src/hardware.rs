@@ -178,7 +178,17 @@ pub(crate) struct InputPlumberConfig {
 #[derive(Clone, Deserialize, Debug)]
 pub(crate) struct PerformanceProfileConfig {
     pub suggested_default: String,
-    pub platform_profile_name: String,
+    #[serde(default)]
+    pub method: PerformanceProfileMethod,
+    pub platform_profile_name: Option<String>,
+}
+
+#[derive(Clone, Copy, Default, Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum PerformanceProfileMethod {
+    #[default]
+    PlatformProfile,
+    PowerStation,
 }
 
 #[derive(Clone, Deserialize, Debug)]
@@ -1095,6 +1105,34 @@ pub mod test {
 
         let config: InputPlumberConfig = toml::from_str("").unwrap();
         assert!(config.target_devices.is_empty());
+    }
+
+    #[test]
+    fn platform_performance_profile_config() {
+        let config: PerformanceProfileConfig = toml::from_str(
+            r#"
+suggested_default = "balanced"
+platform_profile_name = "power-driver"
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(config.method, PerformanceProfileMethod::PlatformProfile);
+        assert_eq!(config.platform_profile_name.as_deref(), Some("power-driver"));
+    }
+
+    #[test]
+    fn power_station_performance_profile_config() {
+        let config: PerformanceProfileConfig = toml::from_str(
+            r#"
+method = "power_station"
+suggested_default = "max-performance"
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(config.method, PerformanceProfileMethod::PowerStation);
+        assert!(config.platform_profile_name.is_none());
     }
 
     #[derive(Default)]

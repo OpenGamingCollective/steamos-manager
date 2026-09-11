@@ -51,8 +51,8 @@ use crate::path;
 use crate::platform::platform_config;
 use crate::power::{
     BATTERY_DEFAULT_SUGGESTED_MINIMUM_LIMIT, CpuSchedulerManager, TdpManagerCommand,
-    get_available_cpu_scaling_governors, get_available_platform_profiles, get_cpu_boost_state,
-    get_cpu_scaling_governor, get_max_charge_level, get_platform_profile, register_tdp_limit1,
+    get_available_cpu_scaling_governors, get_available_performance_profiles, get_cpu_boost_state,
+    get_cpu_scaling_governor, get_max_charge_level, get_performance_profile, register_tdp_limit1,
     unregister_tdp_limit1,
 };
 use crate::proxy::{
@@ -827,7 +827,7 @@ impl PerformanceProfile1 {
             .ok_or(fdo::Error::Failed(String::from(
                 "No performance platform-profile configured",
             )))?;
-        get_available_platform_profiles(&config.platform_profile_name)
+        get_available_performance_profiles(config)
             .await
             .map_err(to_zbus_fdo_error)
     }
@@ -841,7 +841,7 @@ impl PerformanceProfile1 {
             .ok_or(fdo::Error::Failed(String::from(
                 "No performance platform-profile configured",
             )))?;
-        get_platform_profile(&config.platform_profile_name)
+        get_performance_profile(config)
             .await
             .map_err(to_zbus_fdo_error)
     }
@@ -1814,7 +1814,7 @@ async fn create_device_interfaces(
     }
 
     if let Some(config) = config.performance_profile.as_ref()
-        && !get_available_platform_profiles(&config.platform_profile_name)
+        && !get_available_performance_profiles(config)
             .await
             .unwrap_or_default()
             .is_empty()
@@ -2078,8 +2078,8 @@ mod test {
     use crate::hardware::test::fake_model;
     use crate::hardware::{
         BatteryChargeLimitConfig, DeviceConfig, DeviceMatch, DmiMatch, FanSpeedConfig,
-        GpuPerformanceConfig, GpuPowerProfileConfig, PerformanceProfileConfig, RangeConfig,
-        SteamDeckVariant, TdpLimitConfig,
+        GpuPerformanceConfig, GpuPowerProfileConfig, PerformanceProfileConfig,
+        PerformanceProfileMethod, RangeConfig, SteamDeckVariant, TdpLimitConfig,
     };
     use crate::platform::{
         FormatDeviceConfig, PlatformConfig, ResetConfig, ScriptConfig, ScxConfig, ServiceConfig, SessionConfig, StorageConfig,
@@ -2228,7 +2228,8 @@ mod test {
                 },
             }),
             performance_profile: Some(PerformanceProfileConfig {
-                platform_profile_name: String::from("power-driver"),
+                method: PerformanceProfileMethod::PlatformProfile,
+                platform_profile_name: Some(String::from("power-driver")),
                 suggested_default: String::from("balanced"),
             }),
             inputplumber: None,
