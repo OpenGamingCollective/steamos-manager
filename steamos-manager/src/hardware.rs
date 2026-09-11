@@ -221,6 +221,7 @@ pub(crate) struct PerformanceProfileConfig {
 #[derive(Clone, Deserialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum PlatformProfileDriverConfig {
+    PowerStation,
     Acpi {
         name: String,
     },
@@ -1284,6 +1285,33 @@ pub mod test {
 
         let config: InputPlumberConfig = toml::from_str("").unwrap();
         assert!(config.target_devices.is_empty());
+    }
+
+    #[test]
+    fn platform_performance_profile_config() {
+        let config: PerformanceProfileConfig = toml::from_str(
+            r#"
+suggested_default = "balanced"
+[driver.acpi]
+name = "power-driver"
+"#,
+        )
+        .unwrap();
+
+        assert!(matches!(config.driver, PlatformProfileDriverConfig::Acpi { ref name } if name == "power-driver"));
+    }
+
+    #[test]
+    fn power_station_performance_profile_config() {
+        let config: PerformanceProfileConfig = toml::from_str(
+            r#"
+driver = "power_station"
+suggested_default = "max-performance"
+"#,
+        )
+        .unwrap();
+
+        assert!(matches!(config.driver, PlatformProfileDriverConfig::PowerStation));
     }
 
     #[derive(Default)]

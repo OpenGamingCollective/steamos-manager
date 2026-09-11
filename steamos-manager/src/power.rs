@@ -155,6 +155,7 @@ async fn new_platform_profile_driver() -> Result<Box<dyn PlatformProfileDriver>>
         .ok_or(anyhow!("No platform profile driver configured"))?;
 
     match &config.driver {
+        PlatformProfileDriverConfig::PowerStation => Ok(Box::new(power_station_profile_manager())),
         PlatformProfileDriverConfig::Acpi { name } => {
             Ok(Box::new(AcpiPlatformProfileDriver::new(name).await?))
         }
@@ -269,7 +270,8 @@ pub(crate) async fn tdp_limit_manager() -> Result<Box<dyn TdpLimitManager>> {
                 performance_profile: config
                     .firmware_attribute
                     .as_ref()
-                    .and_then(|config| config.performance_profile.clone()),
+                    .and_then(|config| config.performance_profile.clone())
+                    .or_else(|| config.performance_profile.clone()),
             }),
             TdpLimitingMethod::None => bail!("TDP limiting disabled by device configuration"),
         })
@@ -839,13 +841,25 @@ impl PowerStationTdpLimitManager {
     }
 
     async fn is_performance_profile_active(&self) -> Result<bool> {
-        let Some(platform_profile_name) = self.platform_profile_name.as_ref() else {
-            return Ok(true);
-        };
         let Some(performance_profile) = self.performance_profile.as_ref() else {
             return Ok(true);
         };
-        Ok(get_platform_profile(platform_profile_name).await? == *performance_profile)
+        if let Some(platform_profile_name) = self.platform_profile_name.as_ref() {
+            return Ok(
+                AcpiPlatformProfileDriver::new(platform_profile_name)
+                    .await?
+                    .get_platform_profile()
+                    .await? == *performance_profile
+            );
+        }
+        let config = device_config().await?;
+        let Some(_config) = config
+            .as_ref()
+            .and_then(|config| config.performance_profile.as_ref())
+        else {
+            return Ok(true);
+        };
+        Ok(platform_profile_driver().await?.lock().await.get_platform_profile().await? == *performance_profile)
     }
 
     // Query all available GPU cards from PowerStation
@@ -966,6 +980,49 @@ impl PowerStationTdpLimitManager {
             .inspect_err(|message| error!("Error calling Set: {message}"))?;
 
         Ok(())
+    }
+
+    async fn set_power_profile(&self, profile: &str) -> Result<()> {
+        let connection = Connection::system().await?;
+        let card_path = self.find_gpu_card_path().await?;
+        let path = ObjectPath::try_from(card_path.as_str())?;
+        let proxy = zbus::Proxy::new(
+            &connection,
+            Self::DBUS_SERVICE_NAME,
+            path,
+            Self::DBUS_INTERFACE_PROPERTIES,
+        )
+        .await?;
+        proxy
+            .call::<_, _, ()>(
+                "Set",
+                &(
+                    Self::DBUS_TDP_INTERFACE,
+                    "PowerProfile",
+                    zbus::zvariant::Value::from(profile),
+                ),
+            )
+            .await?;
+        Ok(())
+    }
+
+    async fn get_power_station_property(&self, property_name: &str) -> Result<OwnedValue> {
+        let connection = Connection::system().await?;
+        let card_path = self.find_gpu_card_path().await?;
+        let path = ObjectPath::try_from(card_path.as_str())?;
+        let proxy = zbus::Proxy::new(
+            &connection,
+            Self::DBUS_SERVICE_NAME,
+            path,
+            Self::DBUS_INTERFACE_PROPERTIES,
+        )
+        .await?;
+        Ok(proxy
+            .call::<_, _, OwnedValue>(
+                "Get",
+                &(Self::DBUS_TDP_INTERFACE, property_name),
+            )
+            .await?)
     }
 
     // Helper method to get property values from D-Bus
@@ -1274,6 +1331,37 @@ impl PlatformProfileDriver for CustomPlatformProfileDriver {
         }
         self.current_profile = Some(profile.to_string());
         Ok(())
+    }
+}
+
+fn power_station_profile_manager() -> PowerStationTdpLimitManager {
+    PowerStationTdpLimitManager {
+        gpu_card_path: StdMutex::new(None),
+        platform_profile_name: None,
+        performance_profile: None,
+    }
+}
+
+#[async_trait]
+impl PlatformProfileDriver for PowerStationTdpLimitManager {
+    async fn get_available_platform_profiles(&self) -> Result<Vec<String>> {
+        self
+            .get_power_station_property("PowerProfilesAvailable")
+            .await?
+            .try_into()
+            .map_err(Into::into)
+    }
+
+    async fn get_platform_profile(&self) -> Result<String> {
+        self
+            .get_power_station_property("PowerProfile")
+            .await?
+            .try_into()
+            .map_err(Into::into)
+    }
+
+    async fn set_platform_profile(&mut self, profile: &str) -> Result<()> {
+        self.set_power_profile(profile).await
     }
 }
 
