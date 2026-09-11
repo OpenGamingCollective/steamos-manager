@@ -158,6 +158,8 @@ pub(crate) struct RemoteInterfaceLimitManager<'proxy> {
 #[derive(Debug)]
 pub(crate) struct PowerStationTdpLimitManager {
     gpu_card_path: StdMutex<Option<String>>,
+    platform_profile_name: Option<String>,
+    performance_profile: Option<String>,
 }
 
 #[async_trait]
@@ -201,6 +203,14 @@ pub(crate) async fn tdp_limit_manager(system: &Connection) -> Result<Box<dyn Tdp
             }),
             TdpLimitingMethod::PowerStation => Box::new(PowerStationTdpLimitManager {
                 gpu_card_path: StdMutex::new(None),
+                platform_profile_name: config
+                    .firmware_attribute
+                    .as_ref()
+                    .map(|config| config.attribute.clone()),
+                performance_profile: config
+                    .firmware_attribute
+                    .as_ref()
+                    .and_then(|config| config.performance_profile.clone()),
             }),
             TdpLimitingMethod::None => bail!("TDP limiting disabled by device configuration"),
         })
@@ -745,6 +755,16 @@ impl PowerStationTdpLimitManager {
             .any(|name| name.as_str() == Self::DBUS_SERVICE_NAME))
     }
 
+    async fn is_performance_profile_active(&self) -> Result<bool> {
+        let Some(platform_profile_name) = self.platform_profile_name.as_ref() else {
+            return Ok(true);
+        };
+        let Some(performance_profile) = self.performance_profile.as_ref() else {
+            return Ok(true);
+        };
+        Ok(get_platform_profile(platform_profile_name).await? == *performance_profile)
+    }
+
     // Query all available GPU cards from PowerStation
     async fn query_gpu_cards(&self, connection: &zbus::Connection) -> Result<Vec<String>> {
         let gpu_path = format!("{}", Self::DBUS_BASE_PATH);
@@ -968,9 +988,9 @@ impl TdpLimitManager for PowerStationTdpLimitManager {
     }
 
     async fn is_active(&self) -> Result<bool> {
-        // Only check if PowerStation DBus service is running
         let connection = Connection::system().await?;
-        self.check_dbus_service(&connection).await
+        Ok(self.check_dbus_service(&connection).await?
+            && self.is_performance_profile_active().await?)
     }
 }
 
@@ -1881,6 +1901,30 @@ pub(crate) mod test {
                 .unwrap(),
             &["a", "b", "c"]
         );
+    }
+
+    #[tokio::test]
+    async fn power_station_tracks_configured_performance_profile() {
+        let _h = testing::start();
+        let manager = PowerStationTdpLimitManager {
+            gpu_card_path: StdMutex::new(None),
+            platform_profile_name: Some(String::from("amd-pmf")),
+            performance_profile: Some(String::from("performance")),
+        };
+        let base = path(PLATFORM_PROFILE_PREFIX).join("platform-profile-0");
+        create_dir_all(&base).await.unwrap();
+        write_synced(base.join("name"), b"amd-pmf\n").await.unwrap();
+        write_synced(base.join("profile"), b"performance\n")
+            .await
+            .unwrap();
+
+        assert!(manager.is_performance_profile_active().await.unwrap());
+
+        write_synced(base.join("profile"), b"balanced\n")
+            .await
+            .unwrap();
+
+        assert!(!manager.is_performance_profile_active().await.unwrap());
     }
 
     struct MockTdpLimit {
