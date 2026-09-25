@@ -452,6 +452,21 @@ impl TdpLimitManager for AmdgpuHwmonTdpLimitManager {
     }
 
     async fn set_tdp_limit(&self, limit: u32) -> Result<()> {
+        if let Some(ref performance_profile) = self.performance_profile {
+            let config = device_config().await?;
+            if let Some(config) = config
+                .as_ref()
+                .and_then(|config| config.performance_profile.as_ref())
+            {
+                if get_platform_profile(&config.platform_profile_name).await? != *performance_profile {
+                    info!(
+                        "Switching platform profile to {performance_profile} to enable TDP limiting"
+                    );
+                    set_platform_profile(&config.platform_profile_name, performance_profile).await?;
+                }
+            }
+        }
+
         ensure!(self.is_active().await?, "TDP limiting not active");
         ensure!(
             self.get_tdp_limit_range().await?.contains(&limit),
@@ -528,6 +543,21 @@ impl TdpLimitManager for FirmwareAttributeLimitManager {
     }
 
     async fn set_tdp_limit(&self, limit: u32) -> Result<()> {
+        if let Some(ref performance_profile) = self.performance_profile {
+            let config = device_config().await?;
+            if let Some(config) = config
+                .as_ref()
+                .and_then(|config| config.performance_profile.as_ref())
+            {
+                if get_platform_profile(&config.platform_profile_name).await? != *performance_profile {
+                    info!(
+                        "Switching platform profile to {performance_profile} to enable TDP limiting"
+                    );
+                    set_platform_profile(&config.platform_profile_name, performance_profile).await?;
+                }
+            }
+        }
+
         ensure!(self.is_active().await?, "TDP limiting not active");
         ensure!(
             self.get_tdp_limit_range().await?.contains(&limit),
