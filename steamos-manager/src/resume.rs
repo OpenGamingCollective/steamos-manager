@@ -11,7 +11,7 @@ use tracing::{debug, error, info};
 use zbus::Connection;
 
 use crate::Service;
-use crate::gpu::reset_amdgpu_dpm_on_resume;
+use crate::gpu::{GpuPerformanceLevelDriverType, reset_amdgpu_dpm_on_resume};
 use crate::hardware::device_config;
 use crate::power::set_platform_profile;
 use crate::systemd::LogindManagerProxy;
@@ -28,9 +28,11 @@ impl SleepResumeService {
     async fn handle_resume(&self) -> Result<()> {
         info!("System resumed from sleep: restoring hardware power states");
 
+        let config = device_config().await.unwrap_or(None);
+
         // 1. Ensure required platform profile is re-activated if configured
-        if let Ok(Some(config)) = device_config().await {
-            if let Some(perf_config) = config.performance_profile {
+        if let Some(ref config) = config {
+            if let Some(ref perf_config) = config.performance_profile {
                 if let Err(e) = set_platform_profile(
                     &perf_config.platform_profile_name,
                     &perf_config.suggested_default,
@@ -42,9 +44,16 @@ impl SleepResumeService {
             }
         }
 
-        // 2. Clear uninitialized AMD GPU telemetry and 600MHz DPM clamp
-        if let Err(e) = reset_amdgpu_dpm_on_resume().await {
-            debug!("AMD GPU DPM reset on resume: {e}");
+        // 2. Clear uninitialized AMD GPU telemetry and 600MHz DPM clamp (skip on Intel / non-AMD)
+        let is_amd_gpu = match config.as_ref().and_then(|c| c.gpu_performance.as_ref()) {
+            Some(gpu_conf) => gpu_conf.driver == GpuPerformanceLevelDriverType::Amdgpu,
+            None => true, // Fallback: probe sysfs if no explicit device configuration
+        };
+
+        if is_amd_gpu {
+            if let Err(e) = reset_amdgpu_dpm_on_resume().await {
+                debug!("AMD GPU DPM reset on resume: {e}");
+            }
         }
 
         Ok(())

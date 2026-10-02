@@ -286,7 +286,10 @@ impl AmdgpuPerformanceLevelDriver {
     const PERFORMANCE_LEVEL_SUFFIX: &str = "device/power_dpm_force_performance_level";
 
     pub(crate) async fn reset_dpm_post_resume() -> Result<()> {
-        let base = find_hwmon(AMDGPU_HWMON_NAME).await?;
+        let Ok(base) = find_hwmon(AMDGPU_HWMON_NAME).await else {
+            // Not an AMD GPU system or amdgpu hwmon not exposed; gracefully no-op
+            return Ok(());
+        };
         let perf_path = base.join(Self::PERFORMANCE_LEVEL_SUFFIX);
         if try_exists(&perf_path).await? {
             Self::write_sysfs_contents(Self::PERFORMANCE_LEVEL_SUFFIX, b"manual").await?;
