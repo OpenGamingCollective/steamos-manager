@@ -283,7 +283,7 @@ impl GpuPowerProfileDriver for AmdgpuPowerProfileDriver {
 impl AmdgpuPerformanceLevelDriver {
     const CLOCKS_SUFFIX: &str = "device/pp_od_clk_voltage";
     const CLOCK_LEVELS_SUFFIX: &str = "device/pp_dpm_sclk";
-    const PERFORMANCE_LEVEL_SUFFIX: &str = "device/power_dpm_force_performance_level";
+    pub(crate) const PERFORMANCE_LEVEL_SUFFIX: &str = "device/power_dpm_force_performance_level";
 
     pub(crate) async fn reset_dpm_post_resume() -> Result<()> {
         let Ok(base) = find_hwmon(AMDGPU_HWMON_NAME).await else {
@@ -1477,5 +1477,28 @@ CCLK_RANGE in Core0:
         .expect("parse max_freq");
         assert_eq!(min_freq, 800);
         assert_eq!(max_freq, 800);
+    }
+
+    #[tokio::test]
+    async fn test_reset_amdgpu_dpm_on_resume_cycles_performance_level() {
+        let _h = testing::start();
+        setup_amdgpu().await.expect("setup_amdgpu");
+        let base = find_hwmon(AMDGPU_HWMON_NAME).await.unwrap();
+        let filename = base.join(AmdgpuPerformanceLevelDriver::PERFORMANCE_LEVEL_SUFFIX);
+        write(filename.as_path(), "low\n").await.expect("write");
+
+        reset_amdgpu_dpm_on_resume().await.expect("reset_amdgpu_dpm_on_resume");
+
+        let level = read_to_string(filename.as_path()).await.expect("read");
+        assert_eq!(level, "auto");
+    }
+
+    #[tokio::test]
+    async fn test_reset_amdgpu_dpm_on_resume_noop_without_amdgpu() {
+        let _h = testing::start();
+        // Do not setup amdgpu; verify that non-AMD systems (e.g. Intel Arc / Nvidia) gracefully succeed
+        reset_amdgpu_dpm_on_resume()
+            .await
+            .expect("should gracefully no-op without amdgpu");
     }
 }
