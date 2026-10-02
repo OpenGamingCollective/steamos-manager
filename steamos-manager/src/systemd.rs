@@ -76,6 +76,16 @@ trait SystemdManager {
     ) -> zbus::Result<()>;
 }
 
+#[zbus::proxy(
+    interface = "org.freedesktop.login1.Manager",
+    default_service = "org.freedesktop.login1",
+    default_path = "/org/freedesktop/login1"
+)]
+pub(crate) trait LogindManager {
+    #[zbus(signal)]
+    fn prepare_for_sleep(&self, start: bool) -> zbus::Result<()>;
+}
+
 #[derive(Display, EnumString, PartialEq, Debug, Copy, Clone)]
 #[strum(serialize_all = "lowercase")]
 pub enum ActiveState {
