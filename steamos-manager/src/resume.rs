@@ -91,7 +91,7 @@ impl Service for SleepResumeService {
 }
 
 #[cfg(test)]
-#[path = "resume_test.rs"]
+#[path = "resume.test.rs"]
 mod test;
 
 
