@@ -13,8 +13,8 @@ driver = "amdgpu"
 
 [performance_profile]
 method = "power_station"
-suggested_default = "performance"
+suggested_default = "max-performance"
 
 [tdp_limit]
 method = "power_station"
-performance_profile = "performance"
+performance_profile = "max-performance"
