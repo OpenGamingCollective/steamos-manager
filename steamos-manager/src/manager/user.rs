@@ -2040,6 +2040,7 @@ pub(crate) async fn create_interfaces(
 #[cfg(test)]
 mod test {
     use super::*;
+    use anyhow::Error;
     use crate::daemon::channel;
     use crate::daemon::user::{UserCommand, UserContext};
     use crate::gpu::test::Nodes as GpuNodes;
