@@ -850,35 +850,12 @@ impl PerformanceProfile1 {
     async fn set_performance_profile(
         &self,
         profile: &str,
-        #[zbus(connection)] connection: &Connection,
         #[zbus(signal_emitter)] ctx: SignalEmitter<'_>,
     ) -> zbus::Result<()> {
         let _: () = self.proxy.call("SetPerformanceProfile", &(profile)).await?;
         self.performance_profile_changed(&ctx).await?;
-        let connection = connection.clone();
         if let Some(manager) = self.tdp_limit_manager.as_ref() {
-            let manager = manager.clone();
             let _ = manager.send(TdpManagerCommand::UpdateDownloadMode);
-            spawn(async move {
-                let (tx, rx) = oneshot::channel();
-                manager.send(TdpManagerCommand::IsActive(tx))?;
-                if rx.await?? {
-                    let tdp_limit = TdpLimit1 {
-                        manager,
-                        order: SerialOrderValidator::default(),
-                    };
-                    connection
-                        .object_server()
-                        .at(MANAGER_PATH, tdp_limit)
-                        .await?;
-                } else {
-                    connection
-                        .object_server()
-                        .remove::<TdpLimit1, _>(MANAGER_PATH)
-                        .await?;
-                }
-                Ok::<(), Error>(())
-            });
         }
         Ok(())
     }
@@ -1798,19 +1775,11 @@ async fn create_device_interfaces(
             object_server.at(MANAGER_PATH, low_power_mode).await?;
         }
 
-        let object_server = object_server.clone();
-        spawn(async move {
-            let (tx, rx) = oneshot::channel();
-            manager.send(TdpManagerCommand::IsActive(tx))?;
-            if rx.await?? {
-                let tdp_limit = TdpLimit1 {
-                    manager,
-                    order: SerialOrderValidator::default(),
-                };
-                object_server.at(MANAGER_PATH, tdp_limit).await?;
-            }
-            Ok::<(), Error>(())
-        });
+        let tdp_limit = TdpLimit1 {
+            manager,
+            order: SerialOrderValidator::default(),
+        };
+        object_server.at(MANAGER_PATH, tdp_limit).await?;
     }
 
     if let Some(config) = config.performance_profile.as_ref()
@@ -2858,42 +2827,23 @@ mod test {
     }
 
     #[tokio::test]
-    async fn interface_matches_tdp_limit1() {
+    async fn interface_available_without_active_profile_check() {
         let mut test = start(TestConfig::all()).await.expect("start");
-
-        let TdpManagerCommand::IsActive(reply) =
-            test.rx_tdp.as_mut().unwrap().recv().await.unwrap()
-        else {
-            panic!();
-        };
-        reply.send(Ok(true)).unwrap();
-        sleep(Duration::from_millis(1)).await;
 
         assert!(
             test_interface_matches::<TdpLimit1>(&test.connection)
                 .await
                 .unwrap()
         );
+        assert!(matches!(
+            test.rx_tdp.as_mut().unwrap().try_recv(),
+            Err(tokio::sync::mpsc::error::TryRecvError::Empty)
+        ));
     }
 
     #[tokio::test]
     async fn interface_missing_tdp_limit1() {
         let test = start(TestConfig::none()).await.expect("start");
-
-        assert!(test_interface_missing::<TdpLimit1>(&test.connection).await);
-    }
-
-    #[tokio::test]
-    async fn interface_inactive_tdp_limit1() {
-        let mut test = start(TestConfig::all()).await.expect("start");
-
-        let TdpManagerCommand::IsActive(reply) =
-            test.rx_tdp.as_mut().unwrap().recv().await.unwrap()
-        else {
-            panic!();
-        };
-        reply.send(Ok(false)).unwrap();
-        sleep(Duration::from_millis(1)).await;
 
         assert!(test_interface_missing::<TdpLimit1>(&test.connection).await);
     }
