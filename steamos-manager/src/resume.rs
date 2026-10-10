@@ -33,13 +33,15 @@ impl SleepResumeService {
         // 1. Ensure required platform profile is re-activated if configured
         if let Some(config) = config.as_ref() {
             if let Some(ref perf_config) = config.performance_profile {
-                if let Err(e) = set_platform_profile(
-                    &perf_config.platform_profile_name,
-                    &perf_config.suggested_default,
-                )
-                .await
-                {
-                    debug!("Failed to restore platform profile on resume: {e}");
+                if let Some(ref profile_name) = perf_config.platform_profile_name {
+                    if let Err(e) = set_platform_profile(
+                        profile_name,
+                        &perf_config.suggested_default,
+                    )
+                    .await
+                    {
+                        debug!("Failed to restore platform profile on resume: {e}");
+                    }
                 }
             }
         }

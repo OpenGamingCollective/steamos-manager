@@ -489,14 +489,13 @@ impl TdpLimitManager for AmdgpuHwmonTdpLimitManager {
                 .as_ref()
                 .and_then(|config| config.performance_profile.as_ref())
             {
-                if get_platform_profile(&config.platform_profile_name).await?
-                    != *performance_profile
-                {
-                    info!(
-                        "Switching platform profile to {performance_profile} to enable TDP limiting"
-                    );
-                    set_platform_profile(&config.platform_profile_name, performance_profile)
-                        .await?;
+                if let Some(ref name) = config.platform_profile_name {
+                    if get_platform_profile(name).await? != *performance_profile {
+                        info!(
+                            "Switching platform profile to {performance_profile} to enable TDP limiting"
+                        );
+                        set_platform_profile(name, performance_profile).await?;
+                    }
                 }
             }
         }
@@ -583,14 +582,13 @@ impl TdpLimitManager for FirmwareAttributeLimitManager {
                 .as_ref()
                 .and_then(|config| config.performance_profile.as_ref())
             {
-                if get_platform_profile(&config.platform_profile_name).await?
-                    != *performance_profile
-                {
-                    info!(
-                        "Switching platform profile to {performance_profile} to enable TDP limiting"
-                    );
-                    set_platform_profile(&config.platform_profile_name, performance_profile)
-                        .await?;
+                if let Some(ref name) = config.platform_profile_name {
+                    if get_platform_profile(name).await? != *performance_profile {
+                        info!(
+                            "Switching platform profile to {performance_profile} to enable TDP limiting"
+                        );
+                        set_platform_profile(name, performance_profile).await?;
+                    }
                 }
             }
         }

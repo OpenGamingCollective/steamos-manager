@@ -9,7 +9,9 @@ use crate::gpu::{
     AMDGPU_HWMON_NAME, AmdgpuPerformanceLevelDriver, GpuPerformanceLevelDriverType,
     reset_amdgpu_dpm_on_resume,
 };
-use crate::hardware::{DeviceConfig, GpuPerformanceConfig, PerformanceProfileConfig};
+use crate::hardware::{
+    DeviceConfig, GpuPerformanceConfig, PerformanceProfileConfig, PerformanceProfileMethod,
+};
 use crate::path;
 use crate::power::{PLATFORM_PROFILE_PREFIX, find_hwmon};
 use crate::testing;
@@ -50,7 +52,8 @@ async fn test_handle_resume_restores_platform_profile_and_dpm() {
 
     let mut config = DeviceConfig::default();
     config.performance_profile = Some(PerformanceProfileConfig {
-        platform_profile_name: String::from("platform-profile0"),
+        method: PerformanceProfileMethod::PlatformProfile,
+        platform_profile_name: Some(String::from("platform-profile0")),
         suggested_default: String::from("performance"),
     });
     config.gpu_performance = Some(GpuPerformanceConfig {
@@ -92,7 +95,8 @@ async fn test_handle_resume_skips_amdgpu_on_intel_device() {
 
     let mut config = DeviceConfig::default();
     config.performance_profile = Some(PerformanceProfileConfig {
-        platform_profile_name: String::from("platform-profile0"),
+        method: PerformanceProfileMethod::PlatformProfile,
+        platform_profile_name: Some(String::from("platform-profile0")),
         suggested_default: String::from("performance"),
     });
     config.gpu_performance = Some(GpuPerformanceConfig {

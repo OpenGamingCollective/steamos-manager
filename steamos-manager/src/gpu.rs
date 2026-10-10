@@ -307,6 +307,7 @@ impl GpuPowerProfileDriver for AmdgpuPowerProfileDriver {
 
 impl AmdgpuPerformanceLevelDriver {
     const CLOCKS_SUFFIX: &str = "device/pp_od_clk_voltage";
+    const CLOCK_LEVELS_SUFFIX: &str = "device/pp_dpm_sclk";
     pub(crate) const PERFORMANCE_LEVEL_SUFFIX: &str = "device/power_dpm_force_performance_level";
 
     pub(crate) async fn reset_dpm_post_resume() -> Result<()> {

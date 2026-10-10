@@ -6,8 +6,8 @@
 
 use super::*;
 use crate::hardware::{
-    DeviceConfig, FirmwareAttributeConfig, PerformanceProfileConfig, RangeConfig,
-    TdpLimitConfig,
+    DeviceConfig, FirmwareAttributeConfig, PerformanceProfileConfig, PerformanceProfileMethod,
+    RangeConfig, TdpLimitConfig,
 };
 use crate::path;
 use crate::testing;
@@ -31,7 +31,8 @@ async fn test_firmware_attribute_tdp_limiter_auto_activates_profile() {
         performance_profile: None,
     });
     config.performance_profile = Some(PerformanceProfileConfig {
-        platform_profile_name: String::from("platform-profile0"),
+        method: PerformanceProfileMethod::PlatformProfile,
+        platform_profile_name: Some(String::from("platform-profile0")),
         suggested_default: String::from("performance"),
     });
     h.test.set_device_config(config).await;
@@ -115,7 +116,8 @@ async fn test_gpu_hwmon_tdp_limiter_auto_activates_profile() {
         performance_profile: Some(String::from("performance")),
     });
     config.performance_profile = Some(PerformanceProfileConfig {
-        platform_profile_name: String::from("platform-profile0"),
+        method: PerformanceProfileMethod::PlatformProfile,
+        platform_profile_name: Some(String::from("platform-profile0")),
         suggested_default: String::from("performance"),
     });
     handle.test.set_device_config(config).await;

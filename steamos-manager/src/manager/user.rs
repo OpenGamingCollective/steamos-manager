@@ -6,7 +6,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-use anyhow::{Error, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use cecd_proxy::Config1Proxy;
 use serde::Deserialize;
