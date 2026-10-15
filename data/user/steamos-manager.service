@@ -2,6 +2,8 @@
 Description=SteamOS Manager Daemon
 StartLimitIntervalSec=120
 StartLimitBurst=5
+BindsTo=dbus.service
+After=dbus.service
 
 [Service]
 Type=notify-reload
