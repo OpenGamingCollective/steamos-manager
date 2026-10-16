@@ -308,7 +308,25 @@ impl GpuPowerProfileDriver for AmdgpuPowerProfileDriver {
 impl AmdgpuPerformanceLevelDriver {
     const CLOCKS_SUFFIX: &str = "device/pp_od_clk_voltage";
     const CLOCK_LEVELS_SUFFIX: &str = "device/pp_dpm_sclk";
-    const PERFORMANCE_LEVEL_SUFFIX: &str = "device/power_dpm_force_performance_level";
+    pub(crate) const PERFORMANCE_LEVEL_SUFFIX: &str = "device/power_dpm_force_performance_level";
+
+    pub(crate) async fn reset_dpm_post_resume() -> Result<()> {
+        let Ok(base) = find_hwmon(AMDGPU_HWMON_NAME).await else {
+            // Not an AMD GPU system or amdgpu hwmon not exposed; gracefully no-op
+            return Ok(());
+        };
+        let perf_path = base.join(Self::PERFORMANCE_LEVEL_SUFFIX);
+        if try_exists(&perf_path).await? {
+            Self::write_sysfs_contents(Self::PERFORMANCE_LEVEL_SUFFIX, b"manual").await?;
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            Self::write_sysfs_contents(Self::PERFORMANCE_LEVEL_SUFFIX, b"auto").await?;
+        }
+        Ok(())
+    }
+}
+
+pub(crate) async fn reset_amdgpu_dpm_on_resume() -> Result<()> {
+    AmdgpuPerformanceLevelDriver::reset_dpm_post_resume().await
 }
 
 impl AmdgpuGpuPerfDriver for AmdgpuPerformanceLevelDriver {}
