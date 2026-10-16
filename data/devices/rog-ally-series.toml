@@ -19,6 +19,13 @@ device = "rog_xbox_ally_x"
 variant = "RC73XA"
 friendly_name = "ROG Xbox Ally"
 
+[[device]]
+dmi.sys_vendor = "ASUS"
+dmi.board_name = "RC74XA"
+device = "rog_xbox_ally_x_20"
+variant = "RC74XA"
+friendly_name = "ROG Xbox Ally"
+
 [gpu_performance]
 driver = "amdgpu"
 
