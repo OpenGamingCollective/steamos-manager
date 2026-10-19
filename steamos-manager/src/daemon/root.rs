@@ -22,6 +22,7 @@ use crate::ds_inhibit::Inhibitor;
 use crate::inputplumber::DeckService;
 use crate::manager::root::SteamOSManager;
 use crate::path;
+use crate::resume::SleepResumeService;
 use crate::sls::ftrace::Ftrace;
 use crate::sls::{LogLayer, LogReceiver};
 use crate::sysfs::SysfsWriterService;
@@ -127,11 +128,14 @@ impl DaemonContext for RootContext {
         let ftrace = Ftrace::init(&connection).await?;
         daemon.add_service(ftrace);
 
-        let ip = DeckService::init(connection);
+        let ip = DeckService::init(connection.clone());
         daemon.add_service(ip);
 
         let sysfs = SysfsWriterService::init()?;
         daemon.add_service(sysfs);
+
+        let resume_service = SleepResumeService::init(connection);
+        daemon.add_service(resume_service);
 
         self.reload_ds_inhibit(daemon).await?;
 

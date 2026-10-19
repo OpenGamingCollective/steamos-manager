@@ -32,6 +32,7 @@ mod job;
 mod manager;
 mod platform;
 mod process;
+mod resume;
 mod sls;
 mod sysfs;
 mod systemd;

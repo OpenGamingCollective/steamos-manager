@@ -25,7 +25,7 @@ use tokio::net::unix::pipe;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
 use tokio::task::JoinSet;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 use zbus::names::OwnedBusName;
 use zbus::zvariant::{ObjectPath, OwnedObjectPath, OwnedValue};
 use zbus::{Connection, ObjectServer, fdo};
@@ -63,7 +63,7 @@ const CPU_SCALING_AVAILABLE_GOVERNORS_SUFFIX: &str = "scaling_available_governor
 
 const LAVD_PATH: &str = "/usr/bin/scx_lavd";
 
-const PLATFORM_PROFILE_PREFIX: &str = "/sys/class/platform-profile";
+pub(crate) const PLATFORM_PROFILE_PREFIX: &str = "/sys/class/platform-profile";
 
 const TDP_LIMIT1: &str = "power1_cap";
 const TDP_LIMIT2: &str = "power2_cap";
@@ -243,7 +243,6 @@ pub(crate) enum TdpManagerCommand {
     SetTdpLimit(u32),
     GetTdpLimit(oneshot::Sender<Result<u32>>),
     GetTdpLimitRange(oneshot::Sender<Result<RangeInclusive<u32>>>),
-    IsActive(oneshot::Sender<Result<bool>>),
     UpdateDownloadMode,
     EnterDownloadMode(String, oneshot::Sender<Result<Option<OwnedFd>>>),
     ListDownloadModeHandles(oneshot::Sender<HashMap<String, u32>>),
@@ -484,6 +483,23 @@ impl TdpLimitManager for AmdgpuHwmonTdpLimitManager {
     }
 
     async fn set_tdp_limit(&self, limit: u32) -> Result<()> {
+        if let Some(ref performance_profile) = self.performance_profile {
+            let config = device_config().await?;
+            if let Some(config) = config
+                .as_ref()
+                .and_then(|config| config.performance_profile.as_ref())
+            {
+                if let Some(ref name) = config.platform_profile_name {
+                    if get_platform_profile(name).await? != *performance_profile {
+                        info!(
+                            "Switching platform profile to {performance_profile} to enable TDP limiting"
+                        );
+                        set_platform_profile(name, performance_profile).await?;
+                    }
+                }
+            }
+        }
+
         ensure!(self.is_active().await?, "TDP limiting not active");
         ensure!(
             self.get_tdp_limit_range().await?.contains(&limit),
@@ -560,6 +576,23 @@ impl TdpLimitManager for FirmwareAttributeLimitManager {
     }
 
     async fn set_tdp_limit(&self, limit: u32) -> Result<()> {
+        if let Some(ref performance_profile) = self.performance_profile {
+            let config = device_config().await?;
+            if let Some(config) = config
+                .as_ref()
+                .and_then(|config| config.performance_profile.as_ref())
+            {
+                if let Some(ref name) = config.platform_profile_name {
+                    if get_platform_profile(name).await? != *performance_profile {
+                        info!(
+                            "Switching platform profile to {performance_profile} to enable TDP limiting"
+                        );
+                        set_platform_profile(name, performance_profile).await?;
+                    }
+                }
+            }
+        }
+
         ensure!(self.is_active().await?, "TDP limiting not active");
         ensure!(
             self.get_tdp_limit_range().await?.contains(&limit),
@@ -1411,9 +1444,6 @@ impl TdpManagerService {
             }
             TdpManagerCommand::GetTdpLimitRange(reply) => {
                 let _ = reply.send(self.manager.get_tdp_limit_range().await);
-            }
-            TdpManagerCommand::IsActive(reply) => {
-                let _ = reply.send(self.manager.is_active().await);
             }
             TdpManagerCommand::UpdateDownloadMode => {
                 self.update_download_mode().await?;
@@ -2613,5 +2643,9 @@ pub(crate) mod test {
         h.test.set_device_config(config).await;
 
         assert!(tdp_limit_manager(&connection).await.is_err());
+    }
+
+    mod auto_activate_tests {
+        include!("power.test.rs");
     }
 }
