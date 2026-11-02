@@ -12,8 +12,10 @@ driver = "amdgpu"
 driver = "amdgpu"
 
 [performance_profile]
-platform_profile_name = "amd-pmf"
 suggested_default = "performance"
+
+[performance_profile.driver.acpi]
+name = "amd-pmf"
 
 [tdp_limit]
 method = "power_station"

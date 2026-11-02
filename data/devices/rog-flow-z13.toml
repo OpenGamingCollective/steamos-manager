@@ -11,9 +11,11 @@ driver = "amdgpu"
 driver = "amdgpu"
 
 [performance_profile]
-platform_profile_name = "asus-wmi"
 # until custom mode is added
 suggested_default = "performance"
+
+[performance_profile.driver.acpi]
+name = "asus-wmi"
 
 [tdp_limit]
 method = "firmware_attribute"
