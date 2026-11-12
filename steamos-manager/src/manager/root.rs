@@ -1161,6 +1161,16 @@ mod test {
         let test = start().await.expect("start");
 
         let name = test.connection.unique_name().unwrap();
+        let level_proxy = GpuPerformanceLevelProxy::new(&test.connection, name.clone())
+            .await
+            .unwrap();
+        level_proxy
+            .set_gpu_performance_level(
+                GpuPerformanceLevel::Amdgpu(AmdgpuPerformanceLevel::Manual).to_string(),
+            )
+            .await
+            .expect("set manual mode");
+
         let proxy = ManualGpuClockProxy::new(&test.connection, name.clone())
             .await
             .unwrap();
