@@ -3012,7 +3012,10 @@ pub(crate) mod test {
         let mut h = testing::start();
         setup().await.expect("setup");
 
-        let connection = h.new_dbus().await.expect("new_dbus");
+        _ = h.new_dbus().await.expect("new_dbus");
+        h.populate_connections(Connections::System)
+            .await
+            .expect("populate_connections");
         let config = DeviceConfig {
             tdp_limit: Some(TdpLimitConfig {
                 method: TdpLimitingMethod::None,
@@ -3025,6 +3028,6 @@ pub(crate) mod test {
         };
         h.test.set_device_config(config).await;
 
-        assert!(tdp_limit_manager(&connection).await.is_err());
+        assert!(tdp_limit_manager().await.is_err());
     }
 }

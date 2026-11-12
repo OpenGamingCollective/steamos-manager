@@ -946,14 +946,11 @@ mod test {
 
         let proxy = Config1Proxy::new(&test.connection).await.unwrap();
         let daemon = Daemon1Proxy::new(&test.connection).await.unwrap();
-        let mut service = CecdService::new(
-            &test.connection,
-            &HdmiCecControl {
-                connection: test.connection.clone(),
-                proxy,
-                daemon,
-            },
-        )
+        let mut service = CecdService::new(&HdmiCecControl {
+            connection: test.connection.clone(),
+            proxy,
+            daemon,
+        })
         .await
         .unwrap();
 
