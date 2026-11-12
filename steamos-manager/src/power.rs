@@ -1072,13 +1072,6 @@ impl PowerStationTdpLimitManager {
         Ok(max_tdp.round() as u32)
     }
 
-    async fn get_max_boost(&self) -> Result<u32> {
-        let max_boost = self
-            .get_tdp_property("MaxBoost", Self::DBUS_TDP_INTERFACE)
-            .await?;
-        Ok(max_boost.round() as u32)
-    }
-
     async fn set_tdp_boost(&self, boost: u32) -> Result<()> {
         self.set_tdp_property(Self::DBUS_TDP_INTERFACE, "Boost", boost)
             .await
@@ -1105,12 +1098,13 @@ impl TdpLimitManager for PowerStationTdpLimitManager {
             limit,
             range
         );
-        let max_boost = self.get_max_boost().await?;
+        // Steam exposes a strict limit, so disable the boost allowance before
+        // applying the selected TDP.
+        self.set_tdp_boost(0).await?;
 
         // Use the common method to set the TDP property
         self.set_tdp_property(Self::DBUS_TDP_INTERFACE, "TDP", limit)
             .await?;
-        self.set_tdp_boost(max_boost).await?;
         Ok(())
     }
 
