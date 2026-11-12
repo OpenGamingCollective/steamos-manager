@@ -610,8 +610,6 @@ impl GpuPerformanceLevelDriver for AmdgpuPerformanceLevelDriver {
     }
 
     async fn set_clocks(&mut self, clocks: u32) -> Result<()> {
-        // Set GPU clocks to given value valid
-        // Only used when GPU Performance Level is manual, but write whenever called.
         let current_level = self.get_performance_level().await?;
         ensure!(
             self.get_clocks_range_for_performance_level(current_level)
@@ -621,6 +619,14 @@ impl GpuPerformanceLevelDriver for AmdgpuPerformanceLevelDriver {
         );
 
         self.saved_manual_clocks = Some(clocks);
+
+        // The kernel rejects clock writes unless the performance level is
+        // manual. Keep the value; set_performance_level() applies it when
+        // manual mode is selected.
+        if current_level != GpuPerformanceLevel::Amdgpu(AmdgpuPerformanceLevel::Manual) {
+            return Ok(());
+        }
+
         let base = find_hwmon(AMDGPU_HWMON_NAME).await?;
         let mut myfile = File::create(base.join(Self::CLOCKS_SUFFIX))
             .await
@@ -1446,10 +1452,18 @@ CCLK_RANGE in Core0:
         .await
         .unwrap();
 
+        // Outside manual mode the value is kept but not written.
         assert!(driver.set_clocks(200).await.is_ok());
+        assert!(read_clocks().await.is_err());
 
+        // Entering manual mode applies the kept value.
+        driver
+            .set_performance_level(GpuPerformanceLevel::Amdgpu(AmdgpuPerformanceLevel::Manual))
+            .await
+            .expect("set manual mode");
         assert_eq!(read_clocks().await.unwrap(), format_clocks(200));
 
+        // In manual mode the value is written at once.
         assert!(driver.set_clocks(1600).await.is_ok());
         assert_eq!(read_clocks().await.unwrap(), format_clocks(1600));
     }
