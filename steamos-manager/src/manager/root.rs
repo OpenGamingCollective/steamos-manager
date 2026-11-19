@@ -737,7 +737,7 @@ impl SteamOSManager {
             debug!("SetMaxChargeLevel: discarding out of order serial");
             return Ok(());
         }
-        let written = set_max_charge_level(if level == -1 { 0 } else { level })
+        let written = set_max_charge_level(level)
             .await
             .map_err(to_zbus_fdo_error)?;
         let connection = connection.clone();
